@@ -5064,7 +5064,7 @@ renderDashboard();
   const loginError = document.getElementById('loginError');
   const loginStatus = document.getElementById('loginStatus');
   const logoutBtn = document.getElementById('logoutBtn');
-provider.setCustomParameters({
+googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 googleLoginBtn.addEventListener('click', async () => {
