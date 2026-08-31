@@ -5034,7 +5034,6 @@ renderDashboard();
 
   };
 
-
   const SYNC_KEYS = [
     'pantryPlan_stock_v1',
     'pantryPlan_ui_v1',
@@ -5070,26 +5069,39 @@ renderDashboard();
   });
 
   logoutBtn.addEventListener('click', () => {
-    sessionStorage.removeItem('firebaseSyncedOnce');
     signOut(auth);
   });
 
-  async function pullRemoteThenReload(uid) {
+  // Pulls the latest data from Firebase on every page load (not just once
+  // per browser session). If anything differs from what's cached locally,
+  // it reloads the page once so the app initializes with the fresh data.
+  // If nothing differs, no reload happens, so this never loops.
+  async function syncFromFirebaseThenShow(uid) {
     loginStatus.textContent = 'Se sincronizează datele…';
+    let changed = false;
     try {
       const snap = await get(ref(db, 'users/' + uid + '/data'));
       const remote = snap.exists() ? snap.val() : {};
       SYNC_KEYS.forEach((key) => {
         if (remote[key] !== undefined && remote[key] !== null) {
-          localStorage.setItem(key, remote[key]);
+          if (localStorage.getItem(key) !== remote[key]) {
+            localStorage.setItem(key, remote[key]);
+            changed = true;
+          }
         }
       });
     } catch (err) {
       // If the pull fails (e.g. offline), fall back to whatever is already
       // cached locally in this browser instead of blocking access.
     }
-    sessionStorage.setItem('firebaseSyncedOnce', '1');
-    location.reload();
+    if (changed) {
+      location.reload();
+      return;
+    }
+    authGate.style.display = 'none';
+    appWrap.style.display = '';
+    loginStatus.textContent = '';
+    hookSaveJSON(uid);
   }
 
   function hookSaveJSON(uid) {
@@ -5109,15 +5121,8 @@ renderDashboard();
 
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      if (!sessionStorage.getItem('firebaseSyncedOnce')) {
-        pullRemoteThenReload(user.uid);
-        return;
-      }
-      authGate.style.display = 'none';
-      appWrap.style.display = '';
-      hookSaveJSON(user.uid);
+      syncFromFirebaseThenShow(user.uid);
     } else {
-      sessionStorage.removeItem('firebaseSyncedOnce');
       authGate.style.display = 'flex';
       appWrap.style.display = 'none';
       loginStatus.textContent = '';
