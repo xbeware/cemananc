@@ -1,0 +1,5129 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan Alimentar + Cămară + Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBFAF5;
+    --paper:#FFFFFF;
+    --ink:#1F2B22;
+    --ink-soft:#5B6B60;
+    --line:#E4E0D6;
+    --accent:#B84E27;
+    --have:#3F7A5C;
+    --have-tint:#E7F1EB;
+    --need-tint:#FBEAE1;
+    --ok:#3F7A5C;
+    --ok-tint:#E7F1EB;
+    --missing:#B84E27;
+    --missing-tint:#FBEAE1;
+    --partial:#B8842E;
+    --partial-tint:#FBF2DE;
+
+    --gold:#C9962E; --gold-tint:#FBF2DE;
+    --sage:#3F7A5C; --sage-tint:#E7F1EB;
+    --paprika:#B84E27; --paprika-tint:#FBEAE1;
+    --teal:#2A6B72; --teal-tint:#E4F0F1;
+    --plum:#6B4A73; --plum-tint:#F0E7F2;
+    --rust:#8A5A2E; --rust-tint:#F2E9DF;
+    --blue:#2A5B8A; --blue-tint:#E5EEF5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 90px;}
+
+  header.hero{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:20px;}
+  h1{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:clamp(24px,4vw,36px);margin:0 0 8px;letter-spacing:-0.01em;
+  }
+  header.hero p{color:var(--ink-soft);font-size:14.5px;margin:0;max-width:60ch;}
+
+  /* top-level app tabs */
+  .apptabs{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;}
+  .apptab{
+    font-family:'Fraunces',serif;font-weight:600;font-size:15.5px;
+    background:var(--paper);border:1px solid var(--line);border-radius:10px;
+    padding:11px 20px;cursor:pointer;color:var(--ink-soft);
+  }
+  .apptab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .apppanel{display:none;}
+  .apppanel.active{display:block;}
+
+  /* ---- shared summary bar ---- */
+  .summary{
+    position:sticky;top:0;z-index:10;background:var(--bg);
+    display:flex;gap:10px;padding:12px 0;margin-bottom:20px;
+    border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center;
+  }
+  .summary .stat{
+    background:var(--paper);border:1px solid var(--line);border-radius:9px;
+    padding:8px 14px;font-size:13.5px;color:var(--ink-soft);
+  }
+  .summary .stat strong{font-family:'Fraunces',serif;font-size:17px;color:var(--ink);margin-right:5px;}
+  .summary .stat.need strong{color:var(--accent);}
+  .summary .stat.have strong{color:var(--have);}
+  .summary .stat.ok strong{color:var(--ok);}
+  .summary .savenote{font-size:12px;color:var(--have);display:flex;align-items:center;gap:5px;margin-left:auto;opacity:0;transition:opacity .3s ease;}
+  .summary .savenote.show{opacity:1;}
+
+  /* ---- auth gate ---- */
+  .authgate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .authcard{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:32px 28px;max-width:340px;width:100%;text-align:center;}
+  .authcard h1{font-family:'Fraunces',serif;font-weight:600;font-size:24px;margin:0 0 4px;letter-spacing:-0.01em;}
+  .authcard p.sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 22px;}
+  .authcard input{width:100%;box-sizing:border-box;padding:11px 14px;margin-bottom:10px;border:1px solid var(--line);border-radius:9px;font-size:14.5px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);}
+  .authcard button{width:100%;padding:11px 14px;border:none;border-radius:9px;background:var(--ink);color:#fff;font-family:'Fraunces',serif;font-weight:600;font-size:15px;cursor:pointer;margin-top:4px;}
+  .authcard button:hover{opacity:0.9;}
+  .authcard .loginerror{color:var(--accent);font-size:13px;margin:12px 0 0;min-height:16px;}
+  .authcard .loginstatus{color:var(--ink-soft);font-size:13px;margin:12px 0 0;min-height:16px;}
+  .logoutbtn{font-size:12px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;float:right;margin-top:6px;}
+  .logoutbtn:hover{color:var(--accent);border-color:var(--accent);}
+
+  /* ---- pantry tab ---- */
+  .cat{margin-bottom:28px;}
+  .cat h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin:0 0 12px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .cat h2 .swatch{width:10px;height:10px;border-radius:50%;background:var(--cat-color);display:inline-block;}
+
+  .item{
+    background:var(--paper);border:1px solid var(--line);border-radius:10px;
+    padding:12px 16px;margin-bottom:8px;transition:background .15s ease,border-color .15s ease;
+  }
+  .item.have{background:var(--have-tint);border-color:#cfe3d8;}
+  .item-row{display:flex;align-items:center;gap:12px;}
+  .item-row label.name{display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;font-size:14.5px;font-weight:500;}
+  input[type="checkbox"]{width:19px;height:19px;accent-color:var(--have);cursor:pointer;flex:0 0 auto;}
+  .need-tag{font-size:12px;font-weight:600;color:var(--accent);background:var(--need-tint);padding:3px 9px;border-radius:20px;white-space:nowrap;}
+  .have-tag{font-size:12px;font-weight:600;color:var(--have);white-space:nowrap;}
+  .qty-controls{display:none;align-items:center;gap:12px;margin-top:10px;padding-top:10px;border-top:1px dashed #cfe3d8;}
+  .item.have .qty-controls{display:flex;}
+  .qty-controls input[type="range"]{flex:1;accent-color:var(--have);cursor:pointer;}
+  .qty-controls .qty-num-wrap{display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:4px 8px;flex:0 0 auto;}
+  .qty-controls input[type="number"]{width:60px;border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--ink);background:transparent;text-align:right;}
+  .qty-controls input[type="number"]:focus{outline:none;}
+  .qty-controls .unit{font-size:12.5px;color:var(--ink-soft);}
+
+  /* ---- plan tab ---- */
+  .modetoggle{display:flex;gap:8px;margin-bottom:16px;align-items:center;}
+  .modetoggle .modelabel{font-size:13px;color:var(--ink-soft);margin-right:4px;}
+  .modebtn{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:var(--ink-soft);
+    background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:9px 16px;cursor:pointer;
+  }
+  .modebtn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .daytabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:20px;scrollbar-width:none;}
+  .daytabs::-webkit-scrollbar{display:none;}
+  .daytab{
+    flex:0 0 auto;font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:var(--ink-soft);
+    background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer;
+  }
+  .daytab .count{display:block;font-size:11px;font-weight:500;color:var(--ok);margin-top:2px;}
+  .daytab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .daytab.active .count{color:#c9e7d5;}
+
+  .day-panel{display:none;}
+  .day-panel.active{display:block;}
+
+  .meal{
+    background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--cat-color, var(--ink));
+    border-radius:10px;padding:16px 18px 18px;margin-bottom:14px;
+  }
+  .meal.breakfast{--cat-color:var(--gold);}
+  .meal.snack{--cat-color:var(--sage);}
+  .meal.lunch{--cat-color:var(--paprika);}
+  .meal.preworkout{--cat-color:var(--teal);}
+  .meal.dinner{--cat-color:var(--plum);}
+  .meal.evening{--cat-color:var(--rust);}
+  .meal.bigmeal1{--cat-color:var(--paprika);}
+  .meal.bigmeal2{--cat-color:var(--plum);}
+
+  .meal-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:12px;}
+  .meal-head h3{font-family:'Fraunces',serif;font-weight:600;font-size:17.5px;margin:0;display:flex;align-items:center;gap:8px;}
+  .meal-icon{font-size:17px;}
+  .meal-head .meal-macros{font-size:12px;color:var(--ink-soft);font-weight:500;}
+
+  .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:9px;}
+  .option{
+    background:#f7f6f2;border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;
+  }
+  .option.full{background:var(--ok-tint);border-color:#bcdccb;}
+  .option.partial{background:var(--partial-tint);border-color:#ecd394;}
+  .option .opt-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;gap:8px;}
+  .option .tag{font-size:10.5px;font-weight:700;color:var(--cat-color);}
+  .option .day-origin{font-size:10.5px;color:var(--ink-soft);font-weight:600;margin-bottom:5px;}
+  .option .status{font-size:10.5px;font-weight:700;white-space:nowrap;}
+  .option.full .status{color:var(--ok);}
+  .option.partial .status{color:var(--partial);}
+  .option:not(.full):not(.partial) .status{color:var(--ink-soft);}
+  .option .desc{color:var(--ink);margin-bottom:7px;}
+  .option .macros{font-size:11px;color:var(--ink-soft);margin-bottom:7px;}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+  .chip{
+    font-size:11px;font-weight:600;padding:2.5px 8px;border-radius:20px;
+    background:var(--missing-tint);color:var(--missing);
+  }
+  .chip.have{background:var(--ok-tint);color:var(--ok);}
+  .chip.partial{background:var(--partial-tint);color:var(--partial);}
+
+  .eatbtn{
+    width:100%;font-family:'Inter',sans-serif;font-weight:600;font-size:12.5px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);
+    border-radius:7px;padding:7px 10px;cursor:pointer;transition:all .15s ease;
+  }
+  .eatbtn.eaten{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .notes{margin-top:30px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-soft);}
+  .notes strong{color:var(--ink);}
+
+  /* ---- dashboard tab ---- */
+  .dash-section-label{font-size:11.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;}
+
+  /* hero rings: calories + protein */
+  .ring-row{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:22px;}
+  .ring-card{
+    flex:1 1 260px;background:var(--paper);border:1px solid var(--line);border-radius:16px;
+    padding:22px 20px;display:flex;align-items:center;gap:20px;
+  }
+  .ring{
+    --pct:0; --ring-color:var(--sage);
+    width:118px;height:118px;border-radius:50%;flex:0 0 auto;position:relative;
+    background:conic-gradient(var(--ring-color) calc(var(--pct)*3.6deg), #eeece2 0deg);
+    transition:background .35s ease;
+  }
+  .ring::before{content:'';position:absolute;inset:10px;border-radius:50%;background:var(--paper);}
+  .ring-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .ring-content .ring-now{font-family:'Fraunces',serif;font-size:22px;line-height:1.1;color:var(--ink);}
+  .ring-content .ring-target{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .ring-info{flex:1;min-width:0;}
+  .ring-info .ring-label{font-family:'Fraunces',serif;font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:7px;}
+  .ring-info .ring-icon{font-size:17px;}
+  .ring-info .ring-pct{font-size:12.5px;font-weight:700;margin-bottom:6px;}
+  .ring-info .ring-pct.on-track{color:var(--sage);}
+  .ring-info .ring-pct.over{color:var(--accent);}
+  .ring-info .ring-note{font-size:12px;color:var(--ink-soft);}
+
+  /* secondary macro cards: carbs / fat / water */
+  .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:24px;}
+  .dash-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:15px 17px;}
+  .dash-card h4{font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;margin:0 0 9px;
+    display:flex;align-items:center;gap:6px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+  .dash-card h4 .card-icon{font-size:14px;}
+  .dash-card .nums{display:flex;align-items:baseline;gap:5px;margin-bottom:9px;}
+  .dash-card .nums .now{font-family:'Fraunces',serif;font-size:22px;color:var(--ink);}
+  .dash-card .nums .target{font-size:12.5px;color:var(--ink-soft);}
+  .bar-track{background:#efece2;border-radius:20px;height:9px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:20px;transition:width .3s ease;}
+  .dash-card.carbs .bar-fill{background:var(--gold);}
+  .dash-card.fat .bar-fill{background:var(--plum);}
+  .dash-card.water .bar-fill{background:var(--blue);}
+  .dash-card .subnote{font-size:11px;color:var(--ink-soft);margin-top:8px;}
+
+  .water-controls{display:flex;align-items:center;gap:8px;margin-top:10px;}
+  .water-btn{font-family:'Inter',sans-serif;font-weight:700;font-size:15px;width:30px;height:30px;border-radius:8px;
+    border:1px solid var(--line);background:var(--bg);cursor:pointer;color:var(--ink);}
+  .water-btn:hover{background:#f1f0ea;}
+
+  @media (max-width:520px){
+    .ring-card{flex-direction:column;text-align:center;}
+    .ring-info .ring-label{justify-content:center;}
+  }
+
+  .profile-box{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:26px;}
+  .profile-box h3{font-family:'Fraunces',serif;font-size:16.5px;margin:0 0 4px;}
+  .profile-box .hint{font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;}
+  .profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:11.5px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;}
+  .field input, .field select{
+    font-family:'Inter',sans-serif;font-size:14px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:7px;background:var(--bg);color:var(--ink);
+  }
+  .field input:focus, .field select:focus{outline:none;border-color:var(--ink-soft);}
+
+  .eaten-log{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:20px;}
+  .eaten-log h3{font-family:'Fraunces',serif;font-size:15.5px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;}
+  .eaten-log .resetbtn{font-size:12px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;}
+  .log-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .log-row:last-child{border-bottom:none;}
+  .log-row .log-macros{color:var(--ink-soft);font-size:12px;white-space:nowrap;margin-left:10px;}
+  .log-empty{font-size:13px;color:var(--ink-soft);padding:6px 0;}
+  .log-remove{background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;margin-left:8px;}
+
+  @media (max-width:600px){
+    .options{grid-template-columns:1fr;}
+    .qty-controls{flex-wrap:wrap;}
+    .summary .savenote{margin-left:0;}
+  }
+</style>
+</head>
+<body>
+
+<div id="authGate" class="authgate">
+  <div class="authcard">
+    <h1>Plan Alimentar</h1>
+    <p class="sub">Autentificare necesară pentru acces</p>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required autocomplete="username" />
+      <input type="password" id="loginPassword" placeholder="Parolă" required autocomplete="current-password" />
+      <button type="submit">Intră în cont</button>
+    </form>
+    <p id="loginError" class="loginerror"></p>
+    <p id="loginStatus" class="loginstatus"></p>
+  </div>
+</div>
+
+<div class="wrap" id="appWrap" style="display:none;">
+
+  <header class="hero">
+    <button type="button" id="logoutBtn" class="logoutbtn">Ieși din cont</button>
+    <h1>Ce pot mânca în această săptămână</h1>
+    <p>Bifează ce ai în cămară — planul din tabul „Plan” se actualizează live și îți arată ce opțiuni poți face chiar acum, cu ce ai deja, grupate pe tip de masă. În „Dashboard” urmărești proteina, caloriile și apa din ce ai marcat ca mâncat azi.</p>
+  </header>
+
+  <div class="apptabs">
+    <button class="apptab active" data-app="pantry">Cămară</button>
+    <button class="apptab" data-app="plan">Plan</button>
+    <button class="apptab" data-app="dashboard">Dashboard</button>
+  </div>
+
+  <!-- PANTRY PANEL -->
+  <div class="apppanel active" id="app-pantry">
+    <div class="summary">
+      <div class="stat need"><strong id="needCount">0</strong>de cumpărat</div>
+      <div class="stat have"><strong id="haveCount">0</strong>ai deja</div>
+      <div class="stat"><strong id="totalCount">0</strong>produse în total</div>
+      <div class="savenote" id="saveNote">✓ salvat</div>
+    </div>
+    <div id="categories"></div>
+  </div>
+
+  <!-- PLAN PANEL -->
+  <div class="apppanel" id="app-plan">
+    <div class="summary">
+      <div class="stat ok"><strong id="feasibleCount">0</strong>opțiuni posibile acum</div>
+      <div class="stat"><strong id="totalOptCount">0</strong>opțiuni în total</div>
+    </div>
+
+    <div class="modetoggle" id="modeToggle">
+      <span class="modelabel">Ritm mese:</span>
+      <button class="modebtn active" data-mode="3">3+ mese/zi (complet)</button>
+      <button class="modebtn" data-mode="2">2 mese/zi</button>
+    </div>
+
+    <div id="mode3wrap">
+      <div class="daytabs" id="daytabs3"></div>
+      <div id="panels3"></div>
+    </div>
+    <div id="mode2wrap" style="display:none">
+      <div class="daytabs" id="daytabs2"></div>
+      <div id="panels2"></div>
+    </div>
+
+    <div class="notes">
+      <strong>Cum funcționează:</strong> fiecare tab de mai sus e un tip de masă (mic dejun, gustare, prânz...) și conține toate opțiunile posibile pentru masa respectivă, adunate din toată săptămâna. O opțiune apare verde ("✓ poți face asta") când ai tot ce cere rețeta, galben ("parțial") când ai o parte din ingrediente, și fiecare ingredient (chip) îți arată exact cât ai față de cât ai nevoie — nu doar da/nu.
+      <br><br>
+      <strong>Am mâncat asta:</strong> apasă butonul de sub o opțiune ca s-o adaugi în jurnalul de azi din Dashboard — caloriile și proteina se adună automat acolo.
+      <br><br>
+      <strong>Ritm mese:</strong> "3+ mese/zi" e planul complet, pe 6 tipuri de masă (mic dejun, gustare, prânz, pre/post antrenament, cină, seara opțional). "2 mese/zi" e o variantă cu doar 2 mese mai consistente pe zi — porțiile sunt mai mari ca să acopere aceleași nevoi.
+    </div>
+  </div>
+
+  <!-- DASHBOARD PANEL -->
+  <div class="apppanel" id="app-dashboard">
+    <div class="profile-box">
+      <h3>Profilul tău</h3>
+      <p class="hint">Folosit ca să calculăm necesarul zilnic de calorii, proteină și apă. Obiectiv: recompoziție — menții greutatea, dar construiești/definești mușchi.</p>
+      <div class="profile-grid">
+        <div class="field">
+          <label for="p-weight">Greutate (kg)</label>
+          <input type="number" id="p-weight" step="0.1" min="30" max="200">
+        </div>
+        <div class="field">
+          <label for="p-height">Înălțime (cm)</label>
+          <input type="number" id="p-height" step="1" min="120" max="230">
+        </div>
+        <div class="field">
+          <label for="p-age">Vârstă</label>
+          <input type="number" id="p-age" step="1" min="14" max="90">
+        </div>
+        <div class="field">
+          <label for="p-sex">Sex</label>
+          <select id="p-sex">
+            <option value="m">Bărbat</option>
+            <option value="f">Femeie</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="p-activity">Nivel activitate</label>
+          <select id="p-activity">
+            <option value="1.2">Sedentar</option>
+            <option value="1.375">Ușor activ</option>
+            <option value="1.55">Moderat activ</option>
+            <option value="1.725">Foarte activ</option>
+            <option value="1.9">Extrem de activ</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="p-protein">Proteină (g/kg)</label>
+          <input type="number" id="p-protein" step="0.1" min="1" max="3">
+        </div>
+      </div>
+    </div>
+
+    <p class="dash-section-label">Prioritare azi</p>
+    <div class="ring-row">
+      <div class="ring-card">
+        <div class="ring" id="ring-cal">
+          <div class="ring-content">
+            <span class="ring-now" id="d-cal-now">0</span>
+            <span class="ring-target">/ <span id="d-cal-target">0</span> kcal</span>
+          </div>
+        </div>
+        <div class="ring-info">
+          <div class="ring-label"><span class="ring-icon">🔥</span>Calorii</div>
+          <div class="ring-pct" id="d-cal-pct">0%</div>
+          <div class="ring-note">Ținta e nivelul de întreținere (TDEE) — ca să nu iei în greutate, nu e nevoie s-o depășești mult.</div>
+        </div>
+      </div>
+      <div class="ring-card">
+        <div class="ring" id="ring-protein" style="--ring-color:var(--sage)">
+          <div class="ring-content">
+            <span class="ring-now" id="d-protein-now">0</span>
+            <span class="ring-target">/ <span id="d-protein-target">0</span> g</span>
+          </div>
+        </div>
+        <div class="ring-info">
+          <div class="ring-label"><span class="ring-icon">💪</span>Proteină</div>
+          <div class="ring-pct" id="d-protein-pct">0%</div>
+          <div class="ring-note">Cheie pentru definire musculară fără să pierzi masă — încearcă s-o atingi în fiecare zi.</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="dash-section-label">Restul necesarului</p>
+    <div class="dash-grid">
+      <div class="dash-card carbs">
+        <h4><span class="card-icon">🍚</span>Carbohidrați</h4>
+        <div class="nums"><span class="now" id="d-carbs-now">0</span><span class="target">/ <span id="d-carbs-target">0</span> g</span></div>
+        <div class="bar-track"><div class="bar-fill" id="d-carbs-bar" style="width:0%"></div></div>
+      </div>
+      <div class="dash-card fat">
+        <h4><span class="card-icon">🥑</span>Grăsimi</h4>
+        <div class="nums"><span class="now" id="d-fat-now">0</span><span class="target">/ <span id="d-fat-target">0</span> g</span></div>
+        <div class="bar-track"><div class="bar-fill" id="d-fat-bar" style="width:0%"></div></div>
+      </div>
+      <div class="dash-card water">
+        <h4><span class="card-icon">💧</span>Apă</h4>
+        <div class="nums"><span class="now" id="d-water-now">0</span><span class="target">/ <span id="d-water-target">0</span> ml</span></div>
+        <div class="bar-track"><div class="bar-fill" id="d-water-bar" style="width:0%"></div></div>
+        <div class="water-controls">
+          <button class="water-btn" id="water-minus">−</button>
+          <span style="font-size:12px;color:var(--ink-soft);">pahar = 250ml</span>
+          <button class="water-btn" id="water-plus">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="eaten-log">
+      <h3>Ce ai mâncat azi <button class="resetbtn" id="reset-day">resetează ziua</button></h3>
+      <div id="log-list"></div>
+    </div>
+
+    <div class="notes">
+      <strong>Cum se calculează:</strong> BMR (metabolismul de bază) prin formula Mifflin-St Jeor, înmulțit cu multiplicatorul de activitate ca să obții TDEE (necesarul zilnic de întreținere) — asta e ținta de calorii. Proteina e greutatea ta × g/kg ales mai sus (2g/kg implicit, în intervalul 1.6–2.2g/kg recomandat de literatura de sport pentru păstrarea/construirea mușchiului). Grăsimile sunt ~25% din calorii, iar restul caloriilor merg spre carbohidrați. Apa e ~35ml/kg, un reper general de hidratare. Sunt formule folosite pe scară largă în nutriția sportivă, dar sunt estimări — nu măsurători individuale (ex. calorimetrie) și nu țin cont de variații personale de metabolism.
+      <br><br>
+      Jurnalul de azi se resetează automat când începe o zi nouă și se leagă direct de butoanele „Am mâncat asta” din tabul Plan.
+    </div>
+  </div>
+
+</div>
+
+<script>
+const categories = [
+  { name: "Proteine animale", color: "#B84E27", items: [
+    { key:"eggs", name: "Ouă", unit: "buc", max: 30, step: 1, def: 12 },
+    { key:"chicken", name: "Piept de pui", unit: "g", max: 3000, step: 50, def: 800 },
+    { key:"turkey", name: "Piept de curcan", unit: "g", max: 2000, step: 50, def: 500 },
+    { key:"beef", name: "Carne de vită (bucată)", unit: "g", max: 2000, step: 50, def: 500 },
+    { key:"beef_mince", name: "Carne tocată de vită", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"salmon", name: "Somon", unit: "g", max: 1500, step: 50, def: 500 },
+    { key:"white_fish", name: "Pește alb (cod / dorada)", unit: "g", max: 1000, step: 50, def: 300 },
+    { key:"tuna", name: "Ton (conservă)", unit: "buc", max: 6, step: 1, def: 2 },
+    { key:"tofu", name: "Tofu", unit: "g", max: 500, step: 50, def: 200 },
+    { key:"turkey_ham", name: "Șuncă de curcan", unit: "g", max: 300, step: 25, def: 100 },
+    { key:"shrimp", name: "Creveți", unit: "g", max: 800, step: 50, def: 300 },
+  ]},
+  { name: "Lactate & brânzeturi", color: "#2A6B72", items: [
+    { key:"greek_yogurt", name: "Iaurt grecesc", unit: "g", max: 3000, step: 100, def: 1000 },
+    { key:"cottage_ro", name: "Brânză de vaci", unit: "g", max: 2000, step: 100, def: 800 },
+    { key:"cottage_en", name: "Brânză cottage", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"feta", name: "Brânză feta", unit: "g", max: 300, step: 25, def: 100 },
+    { key:"mozzarella", name: "Mozzarella", unit: "g", max: 300, step: 25, def: 125 },
+    { key:"milk", name: "Lapte", unit: "ml", max: 2000, step: 100, def: 1000 },
+  ]},
+  { name: "Cereale & amidon", color: "#C9962E", items: [
+    { key:"oats", name: "Fulgi de ovăz", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"rice", name: "Orez", unit: "g", max: 2000, step: 50, def: 900 },
+    { key:"potato", name: "Cartofi", unit: "g", max: 2000, step: 100, def: 800 },
+    { key:"sweet_potato", name: "Cartof dulce", unit: "g", max: 1500, step: 100, def: 600 },
+    { key:"quinoa", name: "Quinoa", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"pasta", name: "Paste integrale", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"couscous", name: "Cuscus", unit: "g", max: 500, step: 50, def: 150 },
+    { key:"bread", name: "Pâine integrală", unit: "felii", max: 20, step: 1, def: 8 },
+    { key:"tortilla", name: "Tortilla integrală", unit: "buc", max: 8, step: 1, def: 3 },
+    { key:"granola", name: "Granola", unit: "g", max: 500, step: 25, def: 150 },
+    { key:"lentils", name: "Linte roșie", unit: "g", max: 1000, step: 50, def: 300 },
+  ]},
+  { name: "Fructe", color: "#8A5A2E", items: [
+    { key:"banana", name: "Banane", unit: "buc", max: 20, step: 1, def: 10 },
+    { key:"apple", name: "Mere", unit: "buc", max: 10, step: 1, def: 4 },
+    { key:"berries", name: "Fructe de pădure", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"pineapple", name: "Ananas", unit: "g", max: 500, step: 50, def: 150 },
+    { key:"mango", name: "Mango", unit: "buc", max: 3, step: 1, def: 1 },
+  ]},
+  { name: "Legume", color: "#3F7A5C", items: [
+    { key:"broccoli", name: "Broccoli", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"spinach", name: "Spanac", unit: "g", max: 500, step: 25, def: 150 },
+    { key:"mushroom", name: "Ciuperci", unit: "g", max: 500, step: 25, def: 200 },
+    { key:"onion", name: "Ceapă", unit: "buc", max: 10, step: 1, def: 4 },
+    { key:"tomato", name: "Roșii", unit: "buc", max: 15, step: 1, def: 6 },
+    { key:"lettuce", name: "Salată verde", unit: "buc", max: 5, step: 1, def: 2 },
+    { key:"cucumber", name: "Castraveți", unit: "buc", max: 6, step: 1, def: 2 },
+    { key:"avocado", name: "Avocado", unit: "buc", max: 8, step: 1, def: 4 },
+    { key:"asparagus", name: "Sparanghel", unit: "g", max: 500, step: 25, def: 200 },
+    { key:"mixed_veg", name: "Legume mixte (wok / grătar)", unit: "g", max: 2000, step: 100, def: 800 },
+    { key:"root_veg", name: "Legume rădăcinoase", unit: "g", max: 1000, step: 50, def: 400 },
+    { key:"beans", name: "Fasole (conservă)", unit: "buc", max: 4, step: 1, def: 2 },
+    { key:"chickpeas", name: "Năut (conservă)", unit: "buc", max: 4, step: 1, def: 2 },
+  ]},
+  { name: "Condimente & grăsimi", color: "#6B4A73", items: [
+    { key:"olive_oil", name: "Ulei de măsline", unit: "ml", max: 500, step: 25, def: 150 },
+    { key:"peanut_butter", name: "Unt de arahide", unit: "g", max: 500, step: 25, def: 200 },
+    { key:"honey", name: "Miere", unit: "g", max: 500, step: 25, def: 150 },
+    { key:"cinnamon", name: "Scorțișoară", unit: "g", max: 100, step: 5, def: 20 },
+    { key:"olives", name: "Măsline", unit: "g", max: 200, step: 10, def: 50 },
+    { key:"walnuts", name: "Nuci / migdale", unit: "g", max: 500, step: 25, def: 150 },
+    { key:"chia", name: "Semințe de chia", unit: "g", max: 300, step: 10, def: 50 },
+    { key:"cocoa", name: "Cacao pudră", unit: "g", max: 200, step: 10, def: 50 },
+  ]},
+  { name: "Suplimente proteice", color: "#B84E27", items: [
+    { key:"whey", name: "Pudră proteică whey", unit: "măsuri", max: 30, step: 1, def: 14 },
+    { key:"casein", name: "Pudră de cazeină", unit: "măsuri", max: 20, step: 1, def: 6 },
+    { key:"protein_bar", name: "Batoane proteice", unit: "buc", max: 10, step: 1, def: 3 },
+  ]},
+];
+
+// flat lookup: key -> {name, unit}
+const ITEM_INFO = {};
+categories.forEach(cat => cat.items.forEach(it => ITEM_INFO[it.key] = { name: it.name, unit: it.unit }));
+
+const NUTRITION = {
+  eggs:{kcal:70,protein:6,per:1},
+  chicken:{kcal:165,protein:31,per:100},
+  turkey:{kcal:135,protein:30,per:100},
+  beef:{kcal:190,protein:27,per:100},
+  beef_mince:{kcal:215,protein:26,per:100},
+  salmon:{kcal:208,protein:20,per:100},
+  white_fish:{kcal:90,protein:20,per:100},
+  tuna:{kcal:130,protein:26,per:1},
+  tofu:{kcal:76,protein:8,per:100},
+  turkey_ham:{kcal:100,protein:18,per:100},
+  shrimp:{kcal:99,protein:24,per:100},
+  greek_yogurt:{kcal:73,protein:9,per:100},
+  cottage_ro:{kcal:98,protein:13,per:100},
+  cottage_en:{kcal:98,protein:11,per:100},
+  feta:{kcal:264,protein:14,per:100},
+  mozzarella:{kcal:280,protein:22,per:100},
+  milk:{kcal:50,protein:3.4,per:100},
+  oats:{kcal:375,protein:13,per:100},
+  rice:{kcal:360,protein:7,per:100},
+  potato:{kcal:77,protein:2,per:100},
+  sweet_potato:{kcal:86,protein:1.6,per:100},
+  quinoa:{kcal:368,protein:14,per:100},
+  pasta:{kcal:350,protein:12,per:100},
+  couscous:{kcal:376,protein:13,per:100},
+  bread:{kcal:80,protein:4,per:1},
+  tortilla:{kcal:130,protein:4,per:1},
+  granola:{kcal:450,protein:10,per:100},
+  lentils:{kcal:352,protein:24,per:100},
+  banana:{kcal:105,protein:1.3,per:1},
+  apple:{kcal:95,protein:0.5,per:1},
+  berries:{kcal:50,protein:0.7,per:100},
+  pineapple:{kcal:50,protein:0.5,per:100},
+  mango:{kcal:135,protein:1.5,per:1},
+  broccoli:{kcal:34,protein:2.8,per:100},
+  spinach:{kcal:23,protein:2.9,per:100},
+  mushroom:{kcal:22,protein:3.1,per:100},
+  onion:{kcal:44,protein:1.2,per:1},
+  tomato:{kcal:22,protein:1.1,per:1},
+  lettuce:{kcal:45,protein:3,per:1},
+  cucumber:{kcal:45,protein:2,per:1},
+  avocado:{kcal:320,protein:4,per:1},
+  asparagus:{kcal:20,protein:2.2,per:100},
+  mixed_veg:{kcal:40,protein:2,per:100},
+  root_veg:{kcal:40,protein:1.2,per:100},
+  beans:{kcal:220,protein:15,per:1},
+  chickpeas:{kcal:280,protein:15,per:1},
+  olive_oil:{kcal:884,protein:0,per:100},
+  peanut_butter:{kcal:588,protein:25,per:100},
+  honey:{kcal:304,protein:0.3,per:100},
+  cinnamon:{kcal:247,protein:4,per:100},
+  olives:{kcal:115,protein:0.8,per:100},
+  walnuts:{kcal:600,protein:15,per:100},
+  chia:{kcal:486,protein:17,per:100},
+  cocoa:{kcal:228,protein:20,per:100},
+  whey:{kcal:120,protein:24,per:1},
+  casein:{kcal:110,protein:24,per:1},
+  protein_bar:{kcal:200,protein:20,per:1},
+};
+
+const mealTypes3 = [
+  {
+    "type": "breakfast",
+    "label": "Mic dejun",
+    "icon": "🍳",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "3 ouă + 2 albușuri omletă, 70g ovăz cu lapte și banană, 15g unt de arahide",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "oats",
+            "q": 70
+          },
+          {
+            "k": "milk",
+            "q": 100
+          },
+          {
+            "k": "banana",
+            "q": 1
+          },
+          {
+            "k": "peanut_butter",
+            "q": 15
+          }
+        ],
+        "id": "m3-breakfast-0"
+      },
+      {
+        "day": "Luni",
+        "text": "Clătite proteice (2 ouă + 60g ovăz + banană blenduite), miere și fructe de pădure",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "oats",
+            "q": 60
+          },
+          {
+            "k": "banana",
+            "q": 1
+          },
+          {
+            "k": "honey",
+            "q": 15
+          },
+          {
+            "k": "berries",
+            "q": 50
+          }
+        ],
+        "id": "m3-breakfast-1"
+      },
+      {
+        "day": "Luni",
+        "text": "Shakshuka (3 ouă poșate în sos de roșii), 2 felii pâine integrală, avocado",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-breakfast-2"
+      },
+      {
+        "day": "Luni",
+        "text": "Bol de brânză cottage cu ovăz, nuci și scorțișoară",
+        "need": [
+          {
+            "k": "cottage_en",
+            "q": 150
+          },
+          {
+            "k": "oats",
+            "q": 40
+          },
+          {
+            "k": "walnuts",
+            "q": 20
+          },
+          {
+            "k": "cinnamon",
+            "q": 2
+          }
+        ],
+        "id": "m3-breakfast-3"
+      },
+      {
+        "day": "Marți",
+        "text": "Terci de ovăz (70g) cu lapte, scorțișoară, banană, migdale",
+        "need": [
+          {
+            "k": "oats",
+            "q": 70
+          },
+          {
+            "k": "milk",
+            "q": 150
+          },
+          {
+            "k": "cinnamon",
+            "q": 2
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-breakfast-4"
+      },
+      {
+        "day": "Marți",
+        "text": "Omletă cu spanac și brânză feta, 2 felii pâine integrală",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "spinach",
+            "q": 50
+          },
+          {
+            "k": "feta",
+            "q": 30
+          },
+          {
+            "k": "bread",
+            "q": 2
+          }
+        ],
+        "id": "m3-breakfast-5"
+      },
+      {
+        "day": "Marți",
+        "text": "Smoothie: banană, ovăz, lapte, unt de arahide, proteină",
+        "need": [
+          {
+            "k": "banana",
+            "q": 1
+          },
+          {
+            "k": "oats",
+            "q": 40
+          },
+          {
+            "k": "milk",
+            "q": 200
+          },
+          {
+            "k": "peanut_butter",
+            "q": 15
+          },
+          {
+            "k": "whey",
+            "q": 1
+          }
+        ],
+        "id": "m3-breakfast-6"
+      },
+      {
+        "day": "Marți",
+        "text": "Toast cu brânză cottage și roșii cherry",
+        "need": [
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "cottage_en",
+            "q": 60
+          },
+          {
+            "k": "tomato",
+            "q": 1
+          }
+        ],
+        "id": "m3-breakfast-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "3 ouă omletă cu ciuperci și ceapă, pâine integrală",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "mushroom",
+            "q": 80
+          },
+          {
+            "k": "onion",
+            "q": 0.5
+          },
+          {
+            "k": "bread",
+            "q": 2
+          }
+        ],
+        "id": "m3-breakfast-8"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Bowl de ovăz cu iaurt grecesc, fructe și nuci",
+        "need": [
+          {
+            "k": "oats",
+            "q": 50
+          },
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "berries",
+            "q": 50
+          }
+        ],
+        "id": "m3-breakfast-9"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Sandviș cu ou, avocado și brânză",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "cottage_en",
+            "q": 30
+          }
+        ],
+        "id": "m3-breakfast-10"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Clătite de ovăz cu brânză cottage și scorțișoară",
+        "need": [
+          {
+            "k": "oats",
+            "q": 50
+          },
+          {
+            "k": "cottage_en",
+            "q": 100
+          },
+          {
+            "k": "cinnamon",
+            "q": 2
+          }
+        ],
+        "id": "m3-breakfast-11"
+      },
+      {
+        "day": "Joi",
+        "text": "Omletă cu roșii și mozzarella, pâine integrală",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "mozzarella",
+            "q": 50
+          },
+          {
+            "k": "bread",
+            "q": 2
+          }
+        ],
+        "id": "m3-breakfast-12"
+      },
+      {
+        "day": "Joi",
+        "text": "Ovăz cu unt de arahide și banană",
+        "need": [
+          {
+            "k": "oats",
+            "q": 60
+          },
+          {
+            "k": "peanut_butter",
+            "q": 20
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-breakfast-13"
+      },
+      {
+        "day": "Joi",
+        "text": "Smoothie bowl (iaurt grecesc, fructe, granola)",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          },
+          {
+            "k": "berries",
+            "q": 50
+          },
+          {
+            "k": "granola",
+            "q": 40
+          }
+        ],
+        "id": "m3-breakfast-14"
+      },
+      {
+        "day": "Joi",
+        "text": "Ovăz cu cacao, banană și nuci",
+        "need": [
+          {
+            "k": "oats",
+            "q": 60
+          },
+          {
+            "k": "cocoa",
+            "q": 5
+          },
+          {
+            "k": "banana",
+            "q": 1
+          },
+          {
+            "k": "walnuts",
+            "q": 15
+          }
+        ],
+        "id": "m3-breakfast-15"
+      },
+      {
+        "day": "Vineri",
+        "text": "3 ouă + șuncă de curcan, pâine integrală",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "turkey_ham",
+            "q": 50
+          },
+          {
+            "k": "bread",
+            "q": 2
+          }
+        ],
+        "id": "m3-breakfast-16"
+      },
+      {
+        "day": "Vineri",
+        "text": "Clătite proteice cu fructe de pădure",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "oats",
+            "q": 60
+          },
+          {
+            "k": "berries",
+            "q": 50
+          }
+        ],
+        "id": "m3-breakfast-17"
+      },
+      {
+        "day": "Vineri",
+        "text": "Ovăz cu lapte de cocos și mango",
+        "need": [
+          {
+            "k": "oats",
+            "q": 60
+          },
+          {
+            "k": "milk",
+            "q": 150
+          },
+          {
+            "k": "mango",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-breakfast-18"
+      },
+      {
+        "day": "Vineri",
+        "text": "Omletă cu ciuperci și mozzarella",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "mushroom",
+            "q": 60
+          },
+          {
+            "k": "mozzarella",
+            "q": 40
+          }
+        ],
+        "id": "m3-breakfast-19"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Clătite cu iaurt grecesc și fructe",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "oats",
+            "q": 50
+          },
+          {
+            "k": "greek_yogurt",
+            "q": 100
+          },
+          {
+            "k": "berries",
+            "q": 50
+          }
+        ],
+        "id": "m3-breakfast-20"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Omletă cu bacon de curcan și avocado",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "turkey_ham",
+            "q": 50
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-breakfast-21"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Ovăz cu fructe proaspete și miere",
+        "need": [
+          {
+            "k": "oats",
+            "q": 60
+          },
+          {
+            "k": "apple",
+            "q": 1
+          },
+          {
+            "k": "honey",
+            "q": 15
+          }
+        ],
+        "id": "m3-breakfast-22"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Bol de iaurt cu chia și fructe",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "chia",
+            "q": 20
+          },
+          {
+            "k": "berries",
+            "q": 50
+          }
+        ],
+        "id": "m3-breakfast-23"
+      },
+      {
+        "day": "Duminică",
+        "text": "Brunch: ouă, avocado, somon afumat, pâine integrală",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "salmon",
+            "q": 80
+          },
+          {
+            "k": "bread",
+            "q": 2
+          }
+        ],
+        "id": "m3-breakfast-24"
+      },
+      {
+        "day": "Duminică",
+        "text": "Ovăz cu fructe și nuci",
+        "need": [
+          {
+            "k": "oats",
+            "q": 60
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-breakfast-25"
+      },
+      {
+        "day": "Duminică",
+        "text": "Omletă cu legume de sezon",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          }
+        ],
+        "id": "m3-breakfast-26"
+      },
+      {
+        "day": "Duminică",
+        "text": "Clătite proteice cu nuci și miere",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "oats",
+            "q": 50
+          },
+          {
+            "k": "walnuts",
+            "q": 15
+          },
+          {
+            "k": "honey",
+            "q": 10
+          }
+        ],
+        "id": "m3-breakfast-27"
+      }
+    ]
+  },
+  {
+    "type": "snack",
+    "label": "Gustare",
+    "icon": "🥣",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "200g iaurt grecesc, 30g ovăz, miere, fructe de pădure",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          },
+          {
+            "k": "oats",
+            "q": 30
+          },
+          {
+            "k": "honey",
+            "q": 15
+          },
+          {
+            "k": "berries",
+            "q": 50
+          }
+        ],
+        "id": "m3-snack-0"
+      },
+      {
+        "day": "Luni",
+        "text": "Shake proteic + banană + 20g unt de arahide",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "banana",
+            "q": 1
+          },
+          {
+            "k": "peanut_butter",
+            "q": 20
+          }
+        ],
+        "id": "m3-snack-1"
+      },
+      {
+        "day": "Luni",
+        "text": "2 felii pâine integrală cu brânză și 2 ouă fierte",
+        "need": [
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "cottage_ro",
+            "q": 50
+          },
+          {
+            "k": "eggs",
+            "q": 2
+          }
+        ],
+        "id": "m3-snack-2"
+      },
+      {
+        "day": "Luni",
+        "text": "Măr feliat cu 20g unt de arahide și scorțișoară",
+        "need": [
+          {
+            "k": "apple",
+            "q": 1
+          },
+          {
+            "k": "peanut_butter",
+            "q": 20
+          },
+          {
+            "k": "cinnamon",
+            "q": 2
+          }
+        ],
+        "id": "m3-snack-3"
+      },
+      {
+        "day": "Marți",
+        "text": "Cottage cheese (200g) cu ananas",
+        "need": [
+          {
+            "k": "cottage_en",
+            "q": 200
+          },
+          {
+            "k": "pineapple",
+            "q": 100
+          }
+        ],
+        "id": "m3-snack-4"
+      },
+      {
+        "day": "Marți",
+        "text": "Toast cu avocado și ou poșat",
+        "need": [
+          {
+            "k": "bread",
+            "q": 1
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "eggs",
+            "q": 1
+          }
+        ],
+        "id": "m3-snack-5"
+      },
+      {
+        "day": "Marți",
+        "text": "Iaurt grecesc cu granola și miere",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          },
+          {
+            "k": "granola",
+            "q": 40
+          },
+          {
+            "k": "honey",
+            "q": 15
+          }
+        ],
+        "id": "m3-snack-6"
+      },
+      {
+        "day": "Marți",
+        "text": "Chia pudding cu lapte și fructe de pădure",
+        "need": [
+          {
+            "k": "chia",
+            "q": 30
+          },
+          {
+            "k": "milk",
+            "q": 150
+          },
+          {
+            "k": "berries",
+            "q": 40
+          }
+        ],
+        "id": "m3-snack-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Shake proteic + fructe de pădure",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "berries",
+            "q": 50
+          }
+        ],
+        "id": "m3-snack-8"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Brânză de vaci cu miere și nuci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "honey",
+            "q": 15
+          }
+        ],
+        "id": "m3-snack-9"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Măr + 20g unt de arahide",
+        "need": [
+          {
+            "k": "apple",
+            "q": 1
+          },
+          {
+            "k": "peanut_butter",
+            "q": 20
+          }
+        ],
+        "id": "m3-snack-10"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Baton proteic + iaurt grecesc",
+        "need": [
+          {
+            "k": "protein_bar",
+            "q": 1
+          },
+          {
+            "k": "greek_yogurt",
+            "q": 100
+          }
+        ],
+        "id": "m3-snack-11"
+      },
+      {
+        "day": "Joi",
+        "text": "200g iaurt cu nuci",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          }
+        ],
+        "id": "m3-snack-12"
+      },
+      {
+        "day": "Joi",
+        "text": "Shake proteic + ovăz",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "oats",
+            "q": 30
+          }
+        ],
+        "id": "m3-snack-13"
+      },
+      {
+        "day": "Joi",
+        "text": "Brânză cottage cu ananas",
+        "need": [
+          {
+            "k": "cottage_en",
+            "q": 200
+          },
+          {
+            "k": "pineapple",
+            "q": 100
+          }
+        ],
+        "id": "m3-snack-14"
+      },
+      {
+        "day": "Joi",
+        "text": "Brânză de vaci cu scorțișoară și miere",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "cinnamon",
+            "q": 2
+          },
+          {
+            "k": "honey",
+            "q": 10
+          }
+        ],
+        "id": "m3-snack-15"
+      },
+      {
+        "day": "Vineri",
+        "text": "Iaurt grecesc cu miere și nuci",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          },
+          {
+            "k": "honey",
+            "q": 15
+          }
+        ],
+        "id": "m3-snack-16"
+      },
+      {
+        "day": "Vineri",
+        "text": "Shake proteic + fulgi de ovăz",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "oats",
+            "q": 30
+          }
+        ],
+        "id": "m3-snack-17"
+      },
+      {
+        "day": "Vineri",
+        "text": "Sandviș cu brânză și roșii",
+        "need": [
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "cottage_en",
+            "q": 40
+          },
+          {
+            "k": "tomato",
+            "q": 1
+          }
+        ],
+        "id": "m3-snack-18"
+      },
+      {
+        "day": "Vineri",
+        "text": "Chia pudding cu ananas",
+        "need": [
+          {
+            "k": "chia",
+            "q": 25
+          },
+          {
+            "k": "milk",
+            "q": 120
+          },
+          {
+            "k": "pineapple",
+            "q": 80
+          }
+        ],
+        "id": "m3-snack-19"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Smoothie proteic cu fructe",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "berries",
+            "q": 50
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-snack-20"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Iaurt grecesc cu granola",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          },
+          {
+            "k": "granola",
+            "q": 40
+          }
+        ],
+        "id": "m3-snack-21"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Brânză cottage cu castraveți",
+        "need": [
+          {
+            "k": "cottage_en",
+            "q": 150
+          },
+          {
+            "k": "cucumber",
+            "q": 1
+          }
+        ],
+        "id": "m3-snack-22"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Măr cu unt de arahide",
+        "need": [
+          {
+            "k": "apple",
+            "q": 1
+          },
+          {
+            "k": "peanut_butter",
+            "q": 20
+          }
+        ],
+        "id": "m3-snack-23"
+      },
+      {
+        "day": "Duminică",
+        "text": "Iaurt grecesc cu miere",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          },
+          {
+            "k": "honey",
+            "q": 15
+          }
+        ],
+        "id": "m3-snack-24"
+      },
+      {
+        "day": "Duminică",
+        "text": "Shake proteic",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          }
+        ],
+        "id": "m3-snack-25"
+      },
+      {
+        "day": "Duminică",
+        "text": "Fructe + brânză de vaci",
+        "need": [
+          {
+            "k": "apple",
+            "q": 1
+          },
+          {
+            "k": "cottage_ro",
+            "q": 150
+          }
+        ],
+        "id": "m3-snack-26"
+      },
+      {
+        "day": "Duminică",
+        "text": "Brânză cottage cu chia",
+        "need": [
+          {
+            "k": "cottage_en",
+            "q": 150
+          },
+          {
+            "k": "chia",
+            "q": 15
+          }
+        ],
+        "id": "m3-snack-27"
+      }
+    ]
+  },
+  {
+    "type": "lunch",
+    "label": "Prânz",
+    "icon": "🍗",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "180g piept de pui, 150g orez, broccoli, ulei de măsline",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 180
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "broccoli",
+            "q": 150
+          },
+          {
+            "k": "olive_oil",
+            "q": 10
+          }
+        ],
+        "id": "m3-lunch-0"
+      },
+      {
+        "day": "Luni",
+        "text": "180g carne tocată de vită, 150g paste integrale, sos de roșii, salată",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 180
+          },
+          {
+            "k": "pasta",
+            "q": 150
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-1"
+      },
+      {
+        "day": "Luni",
+        "text": "200g curcan la grătar, 150g cartofi, salată verde, ulei de măsline",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 200
+          },
+          {
+            "k": "potato",
+            "q": 150
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          },
+          {
+            "k": "olive_oil",
+            "q": 10
+          }
+        ],
+        "id": "m3-lunch-2"
+      },
+      {
+        "day": "Luni",
+        "text": "Bol cu năut, pui la grătar și legume mixte",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 150
+          },
+          {
+            "k": "chickpeas",
+            "q": 1
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-3"
+      },
+      {
+        "day": "Marți",
+        "text": "180g pește alb (cod/dorada), 150g orez, salată",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 180
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-4"
+      },
+      {
+        "day": "Marți",
+        "text": "200g piept de pui la grătar, 150g cuscus, legume",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "couscous",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-5"
+      },
+      {
+        "day": "Marți",
+        "text": "Chili con carne (180g carne tocată, fasole), 100g orez",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 180
+          },
+          {
+            "k": "beans",
+            "q": 1
+          },
+          {
+            "k": "rice",
+            "q": 100
+          }
+        ],
+        "id": "m3-lunch-6"
+      },
+      {
+        "day": "Marți",
+        "text": "Somon la cuptor cu linte și spanac",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 180
+          },
+          {
+            "k": "lentils",
+            "q": 150
+          },
+          {
+            "k": "spinach",
+            "q": 80
+          }
+        ],
+        "id": "m3-lunch-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "200g somon, 150g orez, sparanghel",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 200
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "asparagus",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-8"
+      },
+      {
+        "day": "Miercuri",
+        "text": "180g piept de pui, 150g cartofi, salată grecească",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 180
+          },
+          {
+            "k": "potato",
+            "q": 150
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "feta",
+            "q": 30
+          },
+          {
+            "k": "cucumber",
+            "q": 1
+          },
+          {
+            "k": "olives",
+            "q": 30
+          }
+        ],
+        "id": "m3-lunch-9"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Paste cu pui și legume (180g pui, 150g paste)",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 180
+          },
+          {
+            "k": "pasta",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          }
+        ],
+        "id": "m3-lunch-10"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Creveți cu quinoa și legume la grătar",
+        "need": [
+          {
+            "k": "shrimp",
+            "q": 200
+          },
+          {
+            "k": "quinoa",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          }
+        ],
+        "id": "m3-lunch-11"
+      },
+      {
+        "day": "Joi",
+        "text": "200g piept de pui, 150g orez brun, legume la wok",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-12"
+      },
+      {
+        "day": "Joi",
+        "text": "180g curcan, cartofi natur, salată",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 180
+          },
+          {
+            "k": "potato",
+            "q": 150
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-13"
+      },
+      {
+        "day": "Joi",
+        "text": "Somon la grătar, quinoa, salată de castraveți",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 180
+          },
+          {
+            "k": "quinoa",
+            "q": 150
+          },
+          {
+            "k": "cucumber",
+            "q": 1
+          }
+        ],
+        "id": "m3-lunch-14"
+      },
+      {
+        "day": "Joi",
+        "text": "Tocană de năut cu pui și legume",
+        "need": [
+          {
+            "k": "chickpeas",
+            "q": 2
+          },
+          {
+            "k": "chicken",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-15"
+      },
+      {
+        "day": "Vineri",
+        "text": "180g pui, 150g orez, legume mexicane",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 180
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-16"
+      },
+      {
+        "day": "Vineri",
+        "text": "Burrito bowl (carne tocată, orez, fasole, avocado)",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 180
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "beans",
+            "q": 1
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-17"
+      },
+      {
+        "day": "Vineri",
+        "text": "200g pește, cartofi, salată",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 200
+          },
+          {
+            "k": "potato",
+            "q": 150
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-18"
+      },
+      {
+        "day": "Vineri",
+        "text": "Somon cu linte și spanac",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 180
+          },
+          {
+            "k": "lentils",
+            "q": 150
+          },
+          {
+            "k": "spinach",
+            "q": 80
+          }
+        ],
+        "id": "m3-lunch-19"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "200g piept de pui, salată de cartofi, legume",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "potato",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          }
+        ],
+        "id": "m3-lunch-20"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "180g vită, orez, legume la grătar",
+        "need": [
+          {
+            "k": "beef",
+            "q": 180
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-21"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Somon, quinoa, salată verde",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 180
+          },
+          {
+            "k": "quinoa",
+            "q": 150
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-22"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Curcan cu năut și salată",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 180
+          },
+          {
+            "k": "chickpeas",
+            "q": 1
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-23"
+      },
+      {
+        "day": "Duminică",
+        "text": "Friptură de vită, cartofi, legume la cuptor",
+        "need": [
+          {
+            "k": "beef",
+            "q": 220
+          },
+          {
+            "k": "potato",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-24"
+      },
+      {
+        "day": "Duminică",
+        "text": "Pui la cuptor întreg (porție), orez, salată",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-lunch-25"
+      },
+      {
+        "day": "Duminică",
+        "text": "Pește la cuptor, cartof dulce, legume",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 220
+          },
+          {
+            "k": "sweet_potato",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-26"
+      },
+      {
+        "day": "Duminică",
+        "text": "Somon la cuptor cu năut și broccoli",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 200
+          },
+          {
+            "k": "chickpeas",
+            "q": 1
+          },
+          {
+            "k": "broccoli",
+            "q": 150
+          }
+        ],
+        "id": "m3-lunch-27"
+      }
+    ]
+  },
+  {
+    "type": "preworkout",
+    "label": "Pre/post antrenament",
+    "icon": "🥤",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "Shake proteic + banană",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-0"
+      },
+      {
+        "day": "Luni",
+        "text": "200g brânză de vaci + felie de pâine integrală",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 200
+          },
+          {
+            "k": "bread",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-1"
+      },
+      {
+        "day": "Luni",
+        "text": "Baton proteic + un măr",
+        "need": [
+          {
+            "k": "protein_bar",
+            "q": 1
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-2"
+      },
+      {
+        "day": "Luni",
+        "text": "Iaurt grecesc cu miere și granola",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "honey",
+            "q": 10
+          },
+          {
+            "k": "granola",
+            "q": 30
+          }
+        ],
+        "id": "m3-preworkout-3"
+      },
+      {
+        "day": "Marți",
+        "text": "Shake proteic + fulgi de ovăz",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "oats",
+            "q": 30
+          }
+        ],
+        "id": "m3-preworkout-4"
+      },
+      {
+        "day": "Marți",
+        "text": "200g iaurt grecesc + miere",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 200
+          },
+          {
+            "k": "honey",
+            "q": 15
+          }
+        ],
+        "id": "m3-preworkout-5"
+      },
+      {
+        "day": "Marți",
+        "text": "2 ouă fierte + o banană",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-6"
+      },
+      {
+        "day": "Marți",
+        "text": "Baton proteic + măr",
+        "need": [
+          {
+            "k": "protein_bar",
+            "q": 1
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Shake proteic + banană",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-8"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Baton energizant + iaurt",
+        "need": [
+          {
+            "k": "protein_bar",
+            "q": 1
+          },
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-preworkout-9"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Brânză de vaci + fructe",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-10"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Chia pudding cu miere",
+        "need": [
+          {
+            "k": "chia",
+            "q": 25
+          },
+          {
+            "k": "milk",
+            "q": 100
+          },
+          {
+            "k": "honey",
+            "q": 10
+          }
+        ],
+        "id": "m3-preworkout-11"
+      },
+      {
+        "day": "Joi",
+        "text": "Shake proteic + banană",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-12"
+      },
+      {
+        "day": "Joi",
+        "text": "2 ouă fierte + fructe",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-13"
+      },
+      {
+        "day": "Joi",
+        "text": "Brânză de vaci cu miere",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "honey",
+            "q": 15
+          }
+        ],
+        "id": "m3-preworkout-14"
+      },
+      {
+        "day": "Joi",
+        "text": "Măr + unt de arahide",
+        "need": [
+          {
+            "k": "apple",
+            "q": 1
+          },
+          {
+            "k": "peanut_butter",
+            "q": 20
+          }
+        ],
+        "id": "m3-preworkout-15"
+      },
+      {
+        "day": "Vineri",
+        "text": "Shake proteic + banană",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-16"
+      },
+      {
+        "day": "Vineri",
+        "text": "Brânză de vaci + fructe",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-17"
+      },
+      {
+        "day": "Vineri",
+        "text": "Baton proteic",
+        "need": [
+          {
+            "k": "protein_bar",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-18"
+      },
+      {
+        "day": "Vineri",
+        "text": "Iaurt grecesc cu granola",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "granola",
+            "q": 30
+          }
+        ],
+        "id": "m3-preworkout-19"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Shake proteic",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-20"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Brânză de vaci + banană",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-21"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Ouă fierte + fructe",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-22"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Chia pudding",
+        "need": [
+          {
+            "k": "chia",
+            "q": 25
+          },
+          {
+            "k": "milk",
+            "q": 120
+          }
+        ],
+        "id": "m3-preworkout-23"
+      },
+      {
+        "day": "Duminică",
+        "text": "Shake proteic + banană",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          },
+          {
+            "k": "banana",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-24"
+      },
+      {
+        "day": "Duminică",
+        "text": "Brânză de vaci + fructe",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "apple",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-25"
+      },
+      {
+        "day": "Duminică",
+        "text": "Baton proteic",
+        "need": [
+          {
+            "k": "protein_bar",
+            "q": 1
+          }
+        ],
+        "id": "m3-preworkout-26"
+      },
+      {
+        "day": "Duminică",
+        "text": "Iaurt grecesc cu granola",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "granola",
+            "q": 30
+          }
+        ],
+        "id": "m3-preworkout-27"
+      }
+    ]
+  },
+  {
+    "type": "dinner",
+    "label": "Cină",
+    "icon": "🍽️",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "180g somon la cuptor, 150g cartof dulce, legume la abur",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 180
+          },
+          {
+            "k": "sweet_potato",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-0"
+      },
+      {
+        "day": "Luni",
+        "text": "180g carne de vită la tigaie, 150g quinoa, avocado, salată",
+        "need": [
+          {
+            "k": "beef",
+            "q": 180
+          },
+          {
+            "k": "quinoa",
+            "q": 150
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-dinner-1"
+      },
+      {
+        "day": "Luni",
+        "text": "200g piept de pui, 150g orez brun, legume sote",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "rice",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-2"
+      },
+      {
+        "day": "Luni",
+        "text": "Creveți la wok cu legume și orez",
+        "need": [
+          {
+            "k": "shrimp",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          },
+          {
+            "k": "rice",
+            "q": 120
+          }
+        ],
+        "id": "m3-dinner-3"
+      },
+      {
+        "day": "Marți",
+        "text": "180g piept de curcan, cartofi la cuptor, legume",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 180
+          },
+          {
+            "k": "potato",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-4"
+      },
+      {
+        "day": "Marți",
+        "text": "Tofu/carne la wok cu legume și 150g orez",
+        "need": [
+          {
+            "k": "tofu",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          },
+          {
+            "k": "rice",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-5"
+      },
+      {
+        "day": "Marți",
+        "text": "180g vită, salată de quinoa cu legume",
+        "need": [
+          {
+            "k": "beef",
+            "q": 180
+          },
+          {
+            "k": "quinoa",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          }
+        ],
+        "id": "m3-dinner-6"
+      },
+      {
+        "day": "Marți",
+        "text": "Curcan la cuptor cu năut și legume",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 180
+          },
+          {
+            "k": "chickpeas",
+            "q": 1
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "180g carne de vită, 150g cartof dulce, broccoli",
+        "need": [
+          {
+            "k": "beef",
+            "q": 180
+          },
+          {
+            "k": "sweet_potato",
+            "q": 150
+          },
+          {
+            "k": "broccoli",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-8"
+      },
+      {
+        "day": "Miercuri",
+        "text": "200g pește la cuptor, quinoa, legume la abur",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 200
+          },
+          {
+            "k": "quinoa",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-9"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Tacos cu carne tocată (180g), tortilla integrală, salată",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 180
+          },
+          {
+            "k": "tortilla",
+            "q": 3
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          },
+          {
+            "k": "tomato",
+            "q": 1
+          }
+        ],
+        "id": "m3-dinner-10"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Pui la cuptor cu linte și legume rădăcinoase",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "lentils",
+            "q": 150
+          },
+          {
+            "k": "root_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-11"
+      },
+      {
+        "day": "Joi",
+        "text": "180g vită, 150g paste, sos de roșii",
+        "need": [
+          {
+            "k": "beef",
+            "q": 180
+          },
+          {
+            "k": "pasta",
+            "q": 150
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          }
+        ],
+        "id": "m3-dinner-12"
+      },
+      {
+        "day": "Joi",
+        "text": "200g pește alb, cartof dulce, legume",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 200
+          },
+          {
+            "k": "sweet_potato",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-13"
+      },
+      {
+        "day": "Joi",
+        "text": "Pui la cuptor cu legume rădăcinoase",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "root_veg",
+            "q": 200
+          }
+        ],
+        "id": "m3-dinner-14"
+      },
+      {
+        "day": "Joi",
+        "text": "Creveți la grătar cu cartof dulce",
+        "need": [
+          {
+            "k": "shrimp",
+            "q": 200
+          },
+          {
+            "k": "sweet_potato",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-15"
+      },
+      {
+        "day": "Vineri",
+        "text": "Pizza integrală cu pui și legume, făcută acasă",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 150
+          },
+          {
+            "k": "mozzarella",
+            "q": 80
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          }
+        ],
+        "id": "m3-dinner-16"
+      },
+      {
+        "day": "Vineri",
+        "text": "Burger de vită (chiflă integrală), cartofi la cuptor",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 180
+          },
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "potato",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-17"
+      },
+      {
+        "day": "Vineri",
+        "text": "Paste cu ton, roșii cherry, măsline",
+        "need": [
+          {
+            "k": "pasta",
+            "q": 150
+          },
+          {
+            "k": "tuna",
+            "q": 1
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "olives",
+            "q": 30
+          }
+        ],
+        "id": "m3-dinner-18"
+      },
+      {
+        "day": "Vineri",
+        "text": "Tacos cu creveți și avocado",
+        "need": [
+          {
+            "k": "shrimp",
+            "q": 200
+          },
+          {
+            "k": "tortilla",
+            "q": 3
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-dinner-19"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Grătar (pui/vită) cu legume la grătar și cartofi",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          },
+          {
+            "k": "potato",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-20"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Pește la cuptor cu legume mediteraneene",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 200
+          }
+        ],
+        "id": "m3-dinner-21"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Tocăniță de pui cu legume și cartofi",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          },
+          {
+            "k": "potato",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-22"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Creveți la cuptor cu legume mediteraneene",
+        "need": [
+          {
+            "k": "shrimp",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 200
+          }
+        ],
+        "id": "m3-dinner-23"
+      },
+      {
+        "day": "Duminică",
+        "text": "Supă cremă de legume + piept de pui",
+        "need": [
+          {
+            "k": "mixed_veg",
+            "q": 200
+          },
+          {
+            "k": "chicken",
+            "q": 100
+          }
+        ],
+        "id": "m3-dinner-24"
+      },
+      {
+        "day": "Duminică",
+        "text": "Salată mare cu ton/pui, ouă, avocado",
+        "need": [
+          {
+            "k": "tuna",
+            "q": 1
+          },
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m3-dinner-25"
+      },
+      {
+        "day": "Duminică",
+        "text": "Omletă cu legume și brânză",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          },
+          {
+            "k": "cottage_en",
+            "q": 40
+          }
+        ],
+        "id": "m3-dinner-26"
+      },
+      {
+        "day": "Duminică",
+        "text": "Supă de linte cu legume",
+        "need": [
+          {
+            "k": "lentils",
+            "q": 150
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m3-dinner-27"
+      }
+    ]
+  },
+  {
+    "type": "evening",
+    "label": "Seara (opțional)",
+    "icon": "🌙",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "150g brânză de vaci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-0"
+      },
+      {
+        "day": "Luni",
+        "text": "Iaurt grecesc cu nuci",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-1"
+      },
+      {
+        "day": "Luni",
+        "text": "Shake de cazeină",
+        "need": [
+          {
+            "k": "casein",
+            "q": 1
+          }
+        ],
+        "id": "m3-evening-2"
+      },
+      {
+        "day": "Luni",
+        "text": "Brânză cottage cu cacao",
+        "need": [
+          {
+            "k": "cottage_en",
+            "q": 150
+          },
+          {
+            "k": "cocoa",
+            "q": 5
+          }
+        ],
+        "id": "m3-evening-3"
+      },
+      {
+        "day": "Marți",
+        "text": "Brânză de vaci cu scorțișoară",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "cinnamon",
+            "q": 2
+          }
+        ],
+        "id": "m3-evening-4"
+      },
+      {
+        "day": "Marți",
+        "text": "Shake proteic ușor",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          }
+        ],
+        "id": "m3-evening-5"
+      },
+      {
+        "day": "Marți",
+        "text": "Iaurt grecesc",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-6"
+      },
+      {
+        "day": "Marți",
+        "text": "Iaurt grecesc cu nuci",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "walnuts",
+            "q": 15
+          }
+        ],
+        "id": "m3-evening-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Iaurt grecesc cu cacao",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-8"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Brânză de vaci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-9"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Shake de cazeină",
+        "need": [
+          {
+            "k": "casein",
+            "q": 1
+          }
+        ],
+        "id": "m3-evening-10"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Cacao cu brânză de vaci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "cocoa",
+            "q": 5
+          }
+        ],
+        "id": "m3-evening-11"
+      },
+      {
+        "day": "Joi",
+        "text": "Brânză de vaci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-12"
+      },
+      {
+        "day": "Joi",
+        "text": "Iaurt grecesc",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-13"
+      },
+      {
+        "day": "Joi",
+        "text": "Shake proteic light",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          }
+        ],
+        "id": "m3-evening-14"
+      },
+      {
+        "day": "Joi",
+        "text": "Iaurt grecesc cu cacao",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "cocoa",
+            "q": 5
+          }
+        ],
+        "id": "m3-evening-15"
+      },
+      {
+        "day": "Vineri",
+        "text": "Iaurt grecesc",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-16"
+      },
+      {
+        "day": "Vineri",
+        "text": "Brânză de vaci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-17"
+      },
+      {
+        "day": "Vineri",
+        "text": "Shake de cazeină",
+        "need": [
+          {
+            "k": "casein",
+            "q": 1
+          }
+        ],
+        "id": "m3-evening-18"
+      },
+      {
+        "day": "Vineri",
+        "text": "Brânză de vaci cu nuci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "walnuts",
+            "q": 15
+          }
+        ],
+        "id": "m3-evening-19"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Iaurt grecesc",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-20"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Brânză de vaci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-21"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Shake ușor",
+        "need": [
+          {
+            "k": "whey",
+            "q": 1
+          }
+        ],
+        "id": "m3-evening-22"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Cacao cu iaurt grecesc",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "cocoa",
+            "q": 5
+          }
+        ],
+        "id": "m3-evening-23"
+      },
+      {
+        "day": "Duminică",
+        "text": "Brânză de vaci",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-24"
+      },
+      {
+        "day": "Duminică",
+        "text": "Iaurt grecesc",
+        "need": [
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          }
+        ],
+        "id": "m3-evening-25"
+      },
+      {
+        "day": "Duminică",
+        "text": "Shake de cazeină",
+        "need": [
+          {
+            "k": "casein",
+            "q": 1
+          }
+        ],
+        "id": "m3-evening-26"
+      },
+      {
+        "day": "Duminică",
+        "text": "Brânză de vaci cu cacao",
+        "need": [
+          {
+            "k": "cottage_ro",
+            "q": 150
+          },
+          {
+            "k": "cocoa",
+            "q": 5
+          }
+        ],
+        "id": "m3-evening-27"
+      }
+    ]
+  }
+];
+
+const mealTypes2 = [
+  {
+    "type": "bigmeal1",
+    "label": "Masă 1 (mai devreme)",
+    "icon": "🍽️",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "4 ouă + 2 albușuri omletă, 150g cartofi, avocado, legume",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 4
+          },
+          {
+            "k": "potato",
+            "q": 150
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "mixed_veg",
+            "q": 100
+          }
+        ],
+        "id": "m2-bigmeal1-0"
+      },
+      {
+        "day": "Luni",
+        "text": "250g piept de pui, 200g orez, broccoli, ulei de măsline",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 250
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "broccoli",
+            "q": 150
+          },
+          {
+            "k": "olive_oil",
+            "q": 10
+          }
+        ],
+        "id": "m2-bigmeal1-1"
+      },
+      {
+        "day": "Luni",
+        "text": "220g carne tocată de vită, 200g paste, sos de roșii, salată",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 220
+          },
+          {
+            "k": "pasta",
+            "q": 200
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m2-bigmeal1-2"
+      },
+      {
+        "day": "Marți",
+        "text": "3 ouă + 80g ovăz cu lapte, banană, unt de arahide",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "oats",
+            "q": 80
+          },
+          {
+            "k": "milk",
+            "q": 150
+          },
+          {
+            "k": "banana",
+            "q": 1
+          },
+          {
+            "k": "peanut_butter",
+            "q": 20
+          }
+        ],
+        "id": "m2-bigmeal1-3"
+      },
+      {
+        "day": "Marți",
+        "text": "220g pui, 200g cuscus, legume mixte",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "couscous",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal1-4"
+      },
+      {
+        "day": "Marți",
+        "text": "200g pește alb, 200g orez, salată",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 200
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m2-bigmeal1-5"
+      },
+      {
+        "day": "Miercuri",
+        "text": "3 ouă omletă cu ciuperci, ceapă, 2 felii pâine, brânză",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "mushroom",
+            "q": 80
+          },
+          {
+            "k": "onion",
+            "q": 0.5
+          },
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "cottage_en",
+            "q": 40
+          }
+        ],
+        "id": "m2-bigmeal1-6"
+      },
+      {
+        "day": "Miercuri",
+        "text": "220g somon, 200g orez, sparanghel",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 220
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "asparagus",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal1-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "220g pui, 200g cartofi, salată grecească",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "potato",
+            "q": 200
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "feta",
+            "q": 40
+          },
+          {
+            "k": "cucumber",
+            "q": 1
+          },
+          {
+            "k": "olives",
+            "q": 30
+          }
+        ],
+        "id": "m2-bigmeal1-8"
+      },
+      {
+        "day": "Joi",
+        "text": "3 ouă + 2 felii pâine cu mozzarella și roșii",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "mozzarella",
+            "q": 50
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          }
+        ],
+        "id": "m2-bigmeal1-9"
+      },
+      {
+        "day": "Joi",
+        "text": "220g pui, 200g orez brun, legume la wok",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal1-10"
+      },
+      {
+        "day": "Joi",
+        "text": "220g curcan, 200g cartofi natur, salată",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 220
+          },
+          {
+            "k": "potato",
+            "q": 200
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m2-bigmeal1-11"
+      },
+      {
+        "day": "Vineri",
+        "text": "3 ouă + șuncă de curcan, pâine integrală",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "turkey_ham",
+            "q": 60
+          },
+          {
+            "k": "bread",
+            "q": 3
+          }
+        ],
+        "id": "m2-bigmeal1-12"
+      },
+      {
+        "day": "Vineri",
+        "text": "220g pui, 200g orez, legume mexicane",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal1-13"
+      },
+      {
+        "day": "Vineri",
+        "text": "Burrito bowl mare (carne tocată, orez, fasole, avocado)",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 220
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "beans",
+            "q": 1
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          }
+        ],
+        "id": "m2-bigmeal1-14"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Clătite mari cu iaurt grecesc și fructe",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "oats",
+            "q": 70
+          },
+          {
+            "k": "greek_yogurt",
+            "q": 150
+          },
+          {
+            "k": "berries",
+            "q": 60
+          }
+        ],
+        "id": "m2-bigmeal1-15"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "220g pui, salată de cartofi, legume",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "potato",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 120
+          }
+        ],
+        "id": "m2-bigmeal1-16"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "220g vită, orez, legume la grătar",
+        "need": [
+          {
+            "k": "beef",
+            "q": 220
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal1-17"
+      },
+      {
+        "day": "Duminică",
+        "text": "Brunch mare: ouă, avocado, somon afumat, pâine integrală",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 3
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "salmon",
+            "q": 100
+          },
+          {
+            "k": "bread",
+            "q": 3
+          }
+        ],
+        "id": "m2-bigmeal1-18"
+      },
+      {
+        "day": "Duminică",
+        "text": "Pui la cuptor întreg (porție mare), orez, salată",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 250
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m2-bigmeal1-19"
+      },
+      {
+        "day": "Duminică",
+        "text": "220g pește la cuptor, cartof dulce, legume",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 220
+          },
+          {
+            "k": "sweet_potato",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal1-20"
+      }
+    ]
+  },
+  {
+    "type": "bigmeal2",
+    "label": "Masă 2 (seara)",
+    "icon": "🌙",
+    "options": [
+      {
+        "day": "Luni",
+        "text": "220g somon la cuptor, 200g cartof dulce, legume la abur, iaurt grecesc",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 220
+          },
+          {
+            "k": "sweet_potato",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          },
+          {
+            "k": "greek_yogurt",
+            "q": 100
+          }
+        ],
+        "id": "m2-bigmeal2-0"
+      },
+      {
+        "day": "Luni",
+        "text": "250g piept de curcan, 200g quinoa, avocado, salată",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 250
+          },
+          {
+            "k": "quinoa",
+            "q": 200
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m2-bigmeal2-1"
+      },
+      {
+        "day": "Luni",
+        "text": "220g vită, 200g cartofi, legume la cuptor, brânză de vaci",
+        "need": [
+          {
+            "k": "beef",
+            "q": 220
+          },
+          {
+            "k": "potato",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          },
+          {
+            "k": "cottage_ro",
+            "q": 100
+          }
+        ],
+        "id": "m2-bigmeal2-2"
+      },
+      {
+        "day": "Marți",
+        "text": "220g curcan, 200g cartofi, legume rădăcinoase",
+        "need": [
+          {
+            "k": "turkey",
+            "q": 220
+          },
+          {
+            "k": "potato",
+            "q": 200
+          },
+          {
+            "k": "root_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal2-3"
+      },
+      {
+        "day": "Marți",
+        "text": "220g vită, 200g quinoa, spanac și feta",
+        "need": [
+          {
+            "k": "beef",
+            "q": 220
+          },
+          {
+            "k": "quinoa",
+            "q": 200
+          },
+          {
+            "k": "spinach",
+            "q": 80
+          },
+          {
+            "k": "feta",
+            "q": 40
+          }
+        ],
+        "id": "m2-bigmeal2-4"
+      },
+      {
+        "day": "Marți",
+        "text": "Tofu/pui la wok cu 200g orez și legume",
+        "need": [
+          {
+            "k": "tofu",
+            "q": 250
+          },
+          {
+            "k": "rice",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal2-5"
+      },
+      {
+        "day": "Miercuri",
+        "text": "220g vită, 200g cartof dulce, broccoli",
+        "need": [
+          {
+            "k": "beef",
+            "q": 220
+          },
+          {
+            "k": "sweet_potato",
+            "q": 200
+          },
+          {
+            "k": "broccoli",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal2-6"
+      },
+      {
+        "day": "Miercuri",
+        "text": "220g pește la cuptor, quinoa, legume la abur",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 220
+          },
+          {
+            "k": "quinoa",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal2-7"
+      },
+      {
+        "day": "Miercuri",
+        "text": "Tacos cu 200g carne tocată, tortilla, salată",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 200
+          },
+          {
+            "k": "tortilla",
+            "q": 3
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          },
+          {
+            "k": "tomato",
+            "q": 1
+          }
+        ],
+        "id": "m2-bigmeal2-8"
+      },
+      {
+        "day": "Joi",
+        "text": "220g somon la grătar, quinoa, castraveți",
+        "need": [
+          {
+            "k": "salmon",
+            "q": 220
+          },
+          {
+            "k": "quinoa",
+            "q": 200
+          },
+          {
+            "k": "cucumber",
+            "q": 1
+          }
+        ],
+        "id": "m2-bigmeal2-9"
+      },
+      {
+        "day": "Joi",
+        "text": "220g vită, 200g paste, sos de roșii",
+        "need": [
+          {
+            "k": "beef",
+            "q": 220
+          },
+          {
+            "k": "pasta",
+            "q": 200
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          }
+        ],
+        "id": "m2-bigmeal2-10"
+      },
+      {
+        "day": "Joi",
+        "text": "220g pește alb, cartof dulce, legume",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 220
+          },
+          {
+            "k": "sweet_potato",
+            "q": 200
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal2-11"
+      },
+      {
+        "day": "Vineri",
+        "text": "Pizza integrală mare cu pui și legume, făcută acasă",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 200
+          },
+          {
+            "k": "mozzarella",
+            "q": 100
+          },
+          {
+            "k": "mixed_veg",
+            "q": 120
+          }
+        ],
+        "id": "m2-bigmeal2-12"
+      },
+      {
+        "day": "Vineri",
+        "text": "Burger de vită mare (chiflă integrală), cartofi la cuptor",
+        "need": [
+          {
+            "k": "beef_mince",
+            "q": 220
+          },
+          {
+            "k": "bread",
+            "q": 2
+          },
+          {
+            "k": "potato",
+            "q": 200
+          }
+        ],
+        "id": "m2-bigmeal2-13"
+      },
+      {
+        "day": "Vineri",
+        "text": "Paste cu ton, roșii cherry, măsline",
+        "need": [
+          {
+            "k": "pasta",
+            "q": 200
+          },
+          {
+            "k": "tuna",
+            "q": 2
+          },
+          {
+            "k": "tomato",
+            "q": 2
+          },
+          {
+            "k": "olives",
+            "q": 40
+          }
+        ],
+        "id": "m2-bigmeal2-14"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Grătar mare (pui/vită) cu legume și cartofi",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          },
+          {
+            "k": "potato",
+            "q": 200
+          }
+        ],
+        "id": "m2-bigmeal2-15"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "220g pește la cuptor cu legume mediteraneene",
+        "need": [
+          {
+            "k": "white_fish",
+            "q": 220
+          },
+          {
+            "k": "mixed_veg",
+            "q": 200
+          }
+        ],
+        "id": "m2-bigmeal2-16"
+      },
+      {
+        "day": "Sâmbătă",
+        "text": "Tocăniță mare de pui cu legume și cartofi",
+        "need": [
+          {
+            "k": "chicken",
+            "q": 220
+          },
+          {
+            "k": "mixed_veg",
+            "q": 120
+          },
+          {
+            "k": "potato",
+            "q": 200
+          }
+        ],
+        "id": "m2-bigmeal2-17"
+      },
+      {
+        "day": "Duminică",
+        "text": "Friptură de vită mare, cartofi, legume la cuptor",
+        "need": [
+          {
+            "k": "beef",
+            "q": 250
+          },
+          {
+            "k": "potato",
+            "q": 220
+          },
+          {
+            "k": "mixed_veg",
+            "q": 150
+          }
+        ],
+        "id": "m2-bigmeal2-18"
+      },
+      {
+        "day": "Duminică",
+        "text": "Salată mare cu ton, pui, ouă, avocado",
+        "need": [
+          {
+            "k": "tuna",
+            "q": 1
+          },
+          {
+            "k": "chicken",
+            "q": 100
+          },
+          {
+            "k": "eggs",
+            "q": 2
+          },
+          {
+            "k": "avocado",
+            "q": 0.5
+          },
+          {
+            "k": "lettuce",
+            "q": 0.5
+          }
+        ],
+        "id": "m2-bigmeal2-19"
+      },
+      {
+        "day": "Duminică",
+        "text": "Omletă mare cu legume și brânză",
+        "need": [
+          {
+            "k": "eggs",
+            "q": 4
+          },
+          {
+            "k": "mixed_veg",
+            "q": 120
+          },
+          {
+            "k": "cottage_en",
+            "q": 50
+          }
+        ],
+        "id": "m2-bigmeal2-20"
+      }
+    ]
+  }
+];
+
+// live stock: key -> quantity currently marked as "have"
+const stock = {};
+categories.forEach(cat => cat.items.forEach(it => stock[it.key] = 0));
+
+/* ---------------------------------------------------------------- */
+/* LOCAL STORAGE                                                     */
+/* ---------------------------------------------------------------- */
+const LS_PANTRY_KEY = 'pantryPlan_stock_v1';
+const LS_UI_KEY = 'pantryPlan_ui_v1';
+const LS_PROFILE_KEY = 'pantryPlan_profile_v1';
+const LS_LOG_KEY = 'pantryPlan_daylog_v1';
+const LS_EATEN_KEY = 'pantryPlan_eaten_v1';
+
+function loadJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+function saveJSON(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+}
+
+function loadPantryState(){ return loadJSON(LS_PANTRY_KEY, {}); }
+const savedPantry = loadPantryState();
+let pantryStateObj = Object.assign({}, savedPantry);
+
+function savePantryItem(key, checked, qty){
+  pantryStateObj[key] = { checked: !!checked, qty: parseFloat(qty) || 0 };
+  saveJSON(LS_PANTRY_KEY, pantryStateObj);
+  flashSaveNote();
+}
+
+let saveNoteTimer = null;
+function flashSaveNote(){
+  const el = document.getElementById('saveNote');
+  if(!el) return;
+  el.classList.add('show');
+  clearTimeout(saveNoteTimer);
+  saveNoteTimer = setTimeout(() => el.classList.remove('show'), 1200);
+}
+
+function loadUIState(){ return loadJSON(LS_UI_KEY, {}); }
+function saveUIState(){
+  saveJSON(LS_UI_KEY, {
+    appTab: currentAppTab,
+    mode: currentMode,
+    tab3: activeTab3,
+    tab2: activeTab2
+  });
+}
+const savedUI = loadUIState();
+let currentAppTab = savedUI.appTab || 'pantry';
+let currentMode = savedUI.mode || '3';
+let activeTab3 = typeof savedUI.tab3 === 'number' ? savedUI.tab3 : 0;
+let activeTab2 = typeof savedUI.tab2 === 'number' ? savedUI.tab2 : 0;
+
+/* ---------------------------------------------------------------- */
+/* APP TABS                                                          */
+/* ---------------------------------------------------------------- */
+document.querySelectorAll('.apptab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.apptab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.apppanel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('app-' + tab.dataset.app).classList.add('active');
+    currentAppTab = tab.dataset.app;
+    saveUIState();
+    if (tab.dataset.app === 'dashboard') renderDashboard();
+  });
+});
+// restore saved app tab
+if (currentAppTab === 'plan' || currentAppTab === 'dashboard') {
+  const sel = document.querySelector('.apptab[data-app="' + currentAppTab + '"]');
+  if (sel) sel.click();
+}
+
+/* ---------------------------------------------------------------- */
+/* RENDER PANTRY                                                     */
+/* ---------------------------------------------------------------- */
+const catsEl = document.getElementById('categories');
+let allItems = [];
+
+categories.forEach((cat, ci) => {
+  const catEl = document.createElement('div');
+  catEl.className = 'cat';
+  catEl.innerHTML = `<h2 style="--cat-color:${cat.color}"><span class="swatch"></span>${cat.name}</h2>`;
+
+  cat.items.forEach((item, ii) => {
+    const id = `item-${ci}-${ii}`;
+    const saved = savedPantry[item.key];
+    const initChecked = saved ? !!saved.checked : false;
+    const initQty = saved && saved.qty !== undefined ? saved.qty : item.def;
+
+    const row = document.createElement('div');
+    row.className = 'item' + (initChecked ? ' have' : '');
+    row.id = 'row-' + id;
+    row.innerHTML = `
+      <div class="item-row">
+        <label class="name" for="${id}">
+          <input type="checkbox" id="${id}" ${initChecked ? 'checked' : ''}>
+          ${item.name}
+        </label>
+        <span class="need-tag" id="need-${id}" style="display:${initChecked ? 'none' : 'inline-block'}">de cumpărat</span>
+        <span class="have-tag" id="have-${id}" style="display:${initChecked ? 'inline-block' : 'none'}">✓ am deja</span>
+      </div>
+      <div class="qty-controls">
+        <input type="range" id="range-${id}" min="0" max="${item.max}" step="${item.step}" value="${initQty}">
+        <div class="qty-num-wrap">
+          <input type="number" id="num-${id}" min="0" max="${item.max}" step="${item.step}" value="${initQty}">
+          <span class="unit">${item.unit}</span>
+        </div>
+      </div>
+    `;
+    catEl.appendChild(row);
+    allItems.push(id);
+
+    const checkbox = row.querySelector('#' + id);
+    const range = row.querySelector('#range-' + id);
+    const num = row.querySelector('#num-' + id);
+    const needTag = row.querySelector('#need-' + id);
+    const haveTag = row.querySelector('#have-' + id);
+
+    // initial stock value
+    stock[item.key] = initChecked ? parseFloat(initQty || 0) : 0;
+
+    function syncStock(){
+      stock[item.key] = checkbox.checked ? parseFloat(num.value || 0) : 0;
+      savePantryItem(item.key, checkbox.checked, num.value);
+      recomputePlan();
+    }
+
+    checkbox.addEventListener('change', () => {
+      const isHave = checkbox.checked;
+      row.classList.toggle('have', isHave);
+      needTag.style.display = isHave ? 'none' : 'inline-block';
+      haveTag.style.display = isHave ? 'inline-block' : 'none';
+      syncStock();
+      updatePantrySummary();
+    });
+
+    range.addEventListener('input', () => { num.value = range.value; syncStock(); });
+    num.addEventListener('input', () => {
+      let v = Math.min(Math.max(num.value, 0), item.max);
+      range.value = v;
+      syncStock();
+    });
+  });
+
+  catsEl.appendChild(catEl);
+});
+
+function updatePantrySummary(){
+  const haveCount = allItems.filter(id => document.getElementById(id).checked).length;
+  const total = allItems.length;
+  document.getElementById('haveCount').textContent = haveCount;
+  document.getElementById('needCount').textContent = total - haveCount;
+  document.getElementById('totalCount').textContent = total;
+}
+updatePantrySummary();
+
+/* ---------------------------------------------------------------- */
+/* MACROS HELPERS                                                    */
+/* ---------------------------------------------------------------- */
+function macrosForNeed(need){
+  let kcal = 0, protein = 0;
+  need.forEach(n => {
+    const nutri = NUTRITION[n.k];
+    if(!nutri) return;
+    const factor = n.q / nutri.per;
+    kcal += factor * nutri.kcal;
+    protein += factor * nutri.protein;
+  });
+  return { kcal: Math.round(kcal), protein: Math.round(protein * 10) / 10 };
+}
+
+/* ---------------------------------------------------------------- */
+/* EATEN LOG (per day)                                                */
+/* ---------------------------------------------------------------- */
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function loadEatenState(){
+  const raw = loadJSON(LS_EATEN_KEY, { date: todayKey(), items: [] });
+  if (raw.date !== todayKey()){
+    return { date: todayKey(), items: [] };
+  }
+  return raw;
+}
+let eatenState = loadEatenState();
+function saveEatenState(){ saveJSON(LS_EATEN_KEY, eatenState); }
+
+function isEaten(optId){
+  return eatenState.items.some(it => it.id === optId);
+}
+function toggleEaten(opt, mealLabel){
+  const idx = eatenState.items.findIndex(it => it.id === opt.id);
+  if (idx >= 0){
+    eatenState.items.splice(idx, 1);
+  } else {
+    eatenState = loadEatenState(); // re-check date rollover before adding
+    const macros = macrosForNeed(opt.need);
+    eatenState.items.push({ id: opt.id, text: opt.text, mealLabel, kcal: macros.kcal, protein: macros.protein });
+  }
+  saveEatenState();
+  renderDashboard();
+}
+
+/* ---------------------------------------------------------------- */
+/* RENDER PLAN — grouped by meal type (all days combined)            */
+/* ---------------------------------------------------------------- */
+let optionRegistry = []; // {el, statusEl, chipEls, opt}
+let tabRegistry3 = [];   // {tabEl, optionIndices, countPrefix, ti}
+let tabRegistry2 = [];
+
+function buildPlanDOM(mealTypesData, tabsEl, panelsEl, tabRegistryOut, countPrefix){
+  mealTypesData.forEach((mt, ti) => {
+    const tab = document.createElement('button');
+    tab.className = 'daytab';
+    tab.innerHTML = `${mt.icon} ${mt.label}<span class="count" id="${countPrefix}-tabcount-${ti}">0</span>`;
+    tab.addEventListener('click', () => selectTab(countPrefix, ti));
+    tabsEl.appendChild(tab);
+    tabRegistryOut.push({ tabEl: tab, optionIndices: [], countPrefix, ti });
+
+    const panel = document.createElement('div');
+    panel.className = 'day-panel';
+    panel.id = countPrefix + '-panel-' + ti;
+
+    const mealEl = document.createElement('div');
+    mealEl.className = 'meal ' + mt.type;
+
+    const head = document.createElement('div');
+    head.className = 'meal-head';
+    head.innerHTML = `<h3><span class="meal-icon">${mt.icon}</span>${mt.label}</h3><span class="meal-macros">${mt.options.length} opțiuni</span>`;
+    mealEl.appendChild(head);
+
+    const optsWrap = document.createElement('div');
+    optsWrap.className = 'options';
+
+    mt.options.forEach((opt, oi) => {
+      const optEl = document.createElement('div');
+      optEl.className = 'option';
+
+      const chipEls = opt.need.map(n => {
+        const info = ITEM_INFO[n.k];
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = `${info.name} 0/${n.q}${info.unit}`;
+        return { el: chip, k: n.k, q: n.q, info };
+      });
+
+      const optHead = document.createElement('div');
+      optHead.className = 'opt-head';
+      optHead.innerHTML = `<span class="tag">Opțiunea ${oi+1}</span>`;
+      const statusEl = document.createElement('span');
+      statusEl.className = 'status';
+      statusEl.textContent = 'lipsesc ingrediente';
+      optHead.appendChild(statusEl);
+
+      const dayOrigin = document.createElement('div');
+      dayOrigin.className = 'day-origin';
+      dayOrigin.textContent = 'din meniul de ' + opt.day;
+
+      const descEl = document.createElement('div');
+      descEl.className = 'desc';
+      descEl.textContent = opt.text;
+
+      const macros = macrosForNeed(opt.need);
+      const macrosEl = document.createElement('div');
+      macrosEl.className = 'macros';
+      macrosEl.textContent = `~${macros.kcal} kcal · ${macros.protein}g proteină`;
+
+      const chipsWrap = document.createElement('div');
+      chipsWrap.className = 'chips';
+      chipEls.forEach(c => chipsWrap.appendChild(c.el));
+
+      const eatBtn = document.createElement('button');
+      eatBtn.className = 'eatbtn';
+      eatBtn.textContent = isEaten(opt.id) ? '✓ mâncat azi' : 'Am mâncat asta';
+      eatBtn.classList.toggle('eaten', isEaten(opt.id));
+      eatBtn.addEventListener('click', () => {
+        toggleEaten(opt, mt.label);
+        eatBtn.textContent = isEaten(opt.id) ? '✓ mâncat azi' : 'Am mâncat asta';
+        eatBtn.classList.toggle('eaten', isEaten(opt.id));
+      });
+
+      optEl.appendChild(optHead);
+      optEl.appendChild(dayOrigin);
+      optEl.appendChild(descEl);
+      optEl.appendChild(macrosEl);
+      optEl.appendChild(chipsWrap);
+      optEl.appendChild(eatBtn);
+      optsWrap.appendChild(optEl);
+
+      optionRegistry.push({ el: optEl, statusEl, chipEls, opt });
+      tabRegistryOut[tabRegistryOut.length - 1].optionIndices.push(optionRegistry.length - 1);
+    });
+
+    mealEl.appendChild(optsWrap);
+    panel.appendChild(mealEl);
+    panelsEl.appendChild(panel);
+  });
+}
+
+const daytabs3El = document.getElementById('daytabs3');
+const panels3El = document.getElementById('panels3');
+const daytabs2El = document.getElementById('daytabs2');
+const panels2El = document.getElementById('panels2');
+
+buildPlanDOM(mealTypes3, daytabs3El, panels3El, tabRegistry3, 'm3');
+buildPlanDOM(mealTypes2, daytabs2El, panels2El, tabRegistry2, 'm2');
+
+function selectTab(countPrefix, i){
+  const tabsEl = countPrefix === 'm3' ? daytabs3El : daytabs2El;
+  const panelsEl = countPrefix === 'm3' ? panels3El : panels2El;
+  Array.from(tabsEl.children).forEach((t, idx) => t.classList.toggle('active', idx === i));
+  Array.from(panelsEl.children).forEach((p, idx) => p.classList.toggle('active', idx === i));
+  if (countPrefix === 'm3') activeTab3 = i; else activeTab2 = i;
+  saveUIState();
+}
+// apply initial active tab for each mode
+selectTab('m3', Math.min(activeTab3, tabRegistry3.length - 1));
+selectTab('m2', Math.min(activeTab2, tabRegistry2.length - 1));
+
+/* ---------------------------------------------------------------- */
+/* MODE TOGGLE (3 mese/zi vs 2 mese/zi)                              */
+/* ---------------------------------------------------------------- */
+const mode3wrap = document.getElementById('mode3wrap');
+const mode2wrap = document.getElementById('mode2wrap');
+
+function applyMode(mode){
+  currentMode = mode;
+  document.querySelectorAll('.modebtn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  mode3wrap.style.display = mode === '3' ? 'block' : 'none';
+  mode2wrap.style.display = mode === '2' ? 'block' : 'none';
+  recomputePlan();
+  saveUIState();
+}
+document.querySelectorAll('.modebtn').forEach(btn => {
+  btn.addEventListener('click', () => applyMode(btn.dataset.mode));
+});
+applyMode(currentMode);
+
+/* ---------------------------------------------------------------- */
+/* LIVE RECOMPUTE — three-state match (full / partial / none)        */
+/* ---------------------------------------------------------------- */
+function recomputePlan(){
+  optionRegistry.forEach(opt => {
+    let ratioSum = 0;
+    let fullCount = 0;
+    opt.chipEls.forEach(c => {
+      const have = stock[c.k] || 0;
+      const ratio = c.q > 0 ? Math.min(1, have / c.q) : 1;
+      ratioSum += ratio;
+      if (ratio >= 1) fullCount++;
+      c.el.classList.toggle('have', ratio >= 1);
+      c.el.classList.toggle('partial', ratio > 0 && ratio < 1);
+      const haveDisplay = c.info.unit === 'buc' || c.info.unit === 'felii' || c.info.unit === 'măsuri'
+        ? Math.min(have, c.q)
+        : Math.round(Math.min(have, c.q) * 10) / 10;
+      c.el.textContent = `${c.info.name} ${haveDisplay}/${c.q}${c.info.unit}`;
+    });
+    const total = opt.chipEls.length;
+    const avgRatio = total ? ratioSum / total : 0;
+    const pct = Math.round(avgRatio * 100);
+    const isFull = fullCount === total;
+    const isPartial = !isFull && avgRatio > 0;
+    opt.el.classList.toggle('full', isFull);
+    opt.el.classList.toggle('partial', isPartial);
+    if (isFull) opt.statusEl.textContent = '✓ poți face asta';
+    else if (isPartial) opt.statusEl.textContent = `parțial — ${pct}%`;
+    else opt.statusEl.textContent = 'lipsesc ingrediente';
+  });
+
+  [...tabRegistry3, ...tabRegistry2].forEach(d => {
+    const feasibleInTab = d.optionIndices.filter(idx => optionRegistry[idx].el.classList.contains('full')).length;
+    document.getElementById(d.countPrefix + '-tabcount-' + d.ti).textContent = feasibleInTab + '/' + d.optionIndices.length;
+  });
+
+  const activeReg = currentMode === '3' ? tabRegistry3 : tabRegistry2;
+  let feasibleTotal = 0, totalOpt = 0;
+  activeReg.forEach(d => {
+    d.optionIndices.forEach(idx => {
+      totalOpt++;
+      if (optionRegistry[idx].el.classList.contains('full')) feasibleTotal++;
+    });
+  });
+  document.getElementById('feasibleCount').textContent = feasibleTotal;
+  document.getElementById('totalOptCount').textContent = totalOpt;
+}
+recomputePlan();
+
+/* ---------------------------------------------------------------- */
+/* DASHBOARD — profile, targets, log, water                          */
+/* ---------------------------------------------------------------- */
+const defaultProfile = { weight: 68, height: 173, age: 25, sex: 'm', activity: 1.55, proteinPerKg: 2.0 };
+let profile = Object.assign({}, defaultProfile, loadJSON(LS_PROFILE_KEY, {}));
+
+const pWeight = document.getElementById('p-weight');
+const pHeight = document.getElementById('p-height');
+const pAge = document.getElementById('p-age');
+const pSex = document.getElementById('p-sex');
+const pActivity = document.getElementById('p-activity');
+const pProtein = document.getElementById('p-protein');
+
+function applyProfileToInputs(){
+  pWeight.value = profile.weight;
+  pHeight.value = profile.height;
+  pAge.value = profile.age;
+  pSex.value = profile.sex;
+  pActivity.value = profile.activity;
+  pProtein.value = profile.proteinPerKg;
+}
+applyProfileToInputs();
+
+function readProfileFromInputs(){
+  profile = {
+    weight: parseFloat(pWeight.value) || defaultProfile.weight,
+    height: parseFloat(pHeight.value) || defaultProfile.height,
+    age: parseFloat(pAge.value) || defaultProfile.age,
+    sex: pSex.value,
+    activity: parseFloat(pActivity.value),
+    proteinPerKg: parseFloat(pProtein.value) || defaultProfile.proteinPerKg
+  };
+  saveJSON(LS_PROFILE_KEY, profile);
+  renderDashboard();
+}
+[pWeight, pHeight, pAge, pSex, pActivity, pProtein].forEach(el => {
+  el.addEventListener('change', readProfileFromInputs);
+  el.addEventListener('input', readProfileFromInputs);
+});
+
+function computeTargets(p){
+  const bmr = p.sex === 'f'
+    ? 10 * p.weight + 6.25 * p.height - 5 * p.age - 161
+    : 10 * p.weight + 6.25 * p.height - 5 * p.age + 5;
+  const tdee = bmr * p.activity;
+  const calTarget = Math.round(tdee);
+  const proteinTarget = Math.round(p.weight * p.proteinPerKg);
+  const fatTarget = Math.round((calTarget * 0.25) / 9);
+  const carbsCalRemaining = calTarget - (proteinTarget * 4) - (fatTarget * 9);
+  const carbsTarget = Math.max(0, Math.round(carbsCalRemaining / 4));
+  const waterTarget = Math.round(p.weight * 35);
+  return { calTarget, proteinTarget, fatTarget, carbsTarget, waterTarget };
+}
+
+/* water tracking */
+const LS_WATER_KEY = 'pantryPlan_water_v1';
+function loadWaterState(){
+  const raw = loadJSON(LS_WATER_KEY, { date: todayKey(), ml: 0 });
+  if (raw.date !== todayKey()) return { date: todayKey(), ml: 0 };
+  return raw;
+}
+let waterState = loadWaterState();
+function saveWaterState(){ saveJSON(LS_WATER_KEY, waterState); }
+
+document.getElementById('water-plus').addEventListener('click', () => {
+  waterState = loadWaterState();
+  waterState.ml += 250;
+  saveWaterState();
+  renderDashboard();
+});
+document.getElementById('water-minus').addEventListener('click', () => {
+  waterState = loadWaterState();
+  waterState.ml = Math.max(0, waterState.ml - 250);
+  saveWaterState();
+  renderDashboard();
+});
+
+document.getElementById('reset-day').addEventListener('click', () => {
+  eatenState = { date: todayKey(), items: [] };
+  saveEatenState();
+  waterState = { date: todayKey(), ml: 0 };
+  saveWaterState();
+  renderDashboard();
+  // refresh eat buttons in Plan
+  optionRegistry.forEach(opt => {
+    const btn = opt.el.querySelector('.eatbtn');
+    if (btn){ btn.textContent = 'Am mâncat asta'; btn.classList.remove('eaten'); }
+  });
+});
+
+function setBar(barId, pct){
+  document.getElementById(barId).style.width = Math.min(100, Math.max(0, pct)) + '%';
+}
+function setRing(ringId, pctLabelId, pct, opts){
+  opts = opts || {};
+  const clamped = Math.min(100, Math.max(0, pct));
+  const ringEl = document.getElementById(ringId);
+  ringEl.style.setProperty('--pct', clamped);
+  const pctEl = document.getElementById(pctLabelId);
+  const rounded = Math.round(pct);
+  pctEl.textContent = rounded + '%' + (opts.overLabel && pct > 105 ? ' — peste țintă' : '');
+  pctEl.classList.toggle('over', !!(opts.overLabel && pct > 105));
+  pctEl.classList.toggle('on-track', !(opts.overLabel && pct > 105));
+  if (opts.overLabel){
+    ringEl.style.setProperty('--ring-color', pct > 105 ? 'var(--accent)' : 'var(--sage)');
+  }
+}
+
+function renderDashboard(){
+  eatenState = loadEatenState();
+  waterState = loadWaterState();
+  const targets = computeTargets(profile);
+
+  const totalKcal = eatenState.items.reduce((s, it) => s + it.kcal, 0);
+  const totalProtein = Math.round(eatenState.items.reduce((s, it) => s + it.protein, 0) * 10) / 10;
+  // approximate carbs/fat split from remaining logged calories using same 25% fat / rest carbs heuristic
+  // (we only track kcal + protein per logged meal; derive rough carbs/fat share for display)
+  const proteinKcal = totalProtein * 4;
+  const remainingKcal = Math.max(0, totalKcal - proteinKcal);
+  const estFat = Math.round((remainingKcal * 0.35) / 9);
+  const estCarbs = Math.round((remainingKcal * 0.65) / 4);
+
+  document.getElementById('d-cal-now').textContent = totalKcal;
+  document.getElementById('d-cal-target').textContent = targets.calTarget;
+  setRing('ring-cal', 'd-cal-pct', (totalKcal / targets.calTarget) * 100, { overLabel: true });
+
+  document.getElementById('d-protein-now').textContent = totalProtein;
+  document.getElementById('d-protein-target').textContent = targets.proteinTarget;
+  setRing('ring-protein', 'd-protein-pct', (totalProtein / targets.proteinTarget) * 100, {});
+
+  document.getElementById('d-carbs-now').textContent = estCarbs;
+  document.getElementById('d-carbs-target').textContent = targets.carbsTarget;
+  setBar('d-carbs-bar', (estCarbs / targets.carbsTarget) * 100);
+
+  document.getElementById('d-fat-now').textContent = estFat;
+  document.getElementById('d-fat-target').textContent = targets.fatTarget;
+  setBar('d-fat-bar', (estFat / targets.fatTarget) * 100);
+
+  document.getElementById('d-water-now').textContent = waterState.ml;
+  document.getElementById('d-water-target').textContent = targets.waterTarget;
+  setBar('d-water-bar', (waterState.ml / targets.waterTarget) * 100);
+
+  const logList = document.getElementById('log-list');
+  logList.innerHTML = '';
+  if (eatenState.items.length === 0){
+    logList.innerHTML = '<div class="log-empty">Nimic marcat ca mâncat încă azi — bifează din tabul Plan.</div>';
+  } else {
+    eatenState.items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'log-row';
+      row.innerHTML = `<span>${it.mealLabel}: ${it.text}</span>`;
+      const macrosSpan = document.createElement('span');
+      macrosSpan.className = 'log-macros';
+      macrosSpan.textContent = `${it.kcal} kcal · ${it.protein}g`;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'log-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => {
+        eatenState.items = eatenState.items.filter(x => x.id !== it.id);
+        saveEatenState();
+        renderDashboard();
+        const optReg = optionRegistry.find(o => o.opt.id === it.id);
+        if (optReg){
+          const btn = optReg.el.querySelector('.eatbtn');
+          if (btn){ btn.textContent = 'Am mâncat asta'; btn.classList.remove('eaten'); }
+        }
+      });
+      row.appendChild(macrosSpan);
+      row.appendChild(removeBtn);
+      logList.appendChild(row);
+    });
+  }
+}
+renderDashboard();
+</script>
+
+<script type="module">
+  /* ---------------------------------------------------------------- */
+  /* FIREBASE SYNC + AUTH GATE                                         */
+  /* Fill in firebaseConfig below with your own project's values,      */
+  /* create yourself as a user under Authentication > Users in the     */
+  /* Firebase console (email/password provider), and set Realtime      */
+  /* Database rules so only that signed-in user can read/write their   */
+  /* own "users/<uid>/data" path.                                      */
+  /* ---------------------------------------------------------------- */
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import {
+    getDatabase, ref, get, set
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+
+    apiKey: "AIzaSyDVXt8_0NzXUuPG7Otcft8jt5V8jMmA8FQ",
+
+    authDomain: "cemananc.firebaseapp.com",
+
+    databaseURL: "https://cemananc-default-rtdb.europe-west1.firebasedatabase.app",
+
+    projectId: "cemananc",
+
+    storageBucket: "cemananc.firebasestorage.app",
+
+    messagingSenderId: "281697045943",
+
+    appId: "1:281697045943:web:4d04b6ab3cdb80d3d06c32",
+
+    measurementId: "G-Y5LDMBLPCR"
+
+  };
+
+
+  const SYNC_KEYS = [
+    'pantryPlan_stock_v1',
+    'pantryPlan_ui_v1',
+    'pantryPlan_profile_v1',
+    'pantryPlan_daylog_v1',
+    'pantryPlan_eaten_v1',
+    'pantryPlan_water_v1'
+  ];
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  const authGate = document.getElementById('authGate');
+  const appWrap = document.getElementById('appWrap');
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const loginStatus = document.getElementById('loginStatus');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+    loginStatus.textContent = 'Se autentifică…';
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      loginStatus.textContent = '';
+      loginError.textContent = 'Autentificare eșuată. Verifică email-ul și parola.';
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    sessionStorage.removeItem('firebaseSyncedOnce');
+    signOut(auth);
+  });
+
+  async function pullRemoteThenReload(uid) {
+    loginStatus.textContent = 'Se sincronizează datele…';
+    try {
+      const snap = await get(ref(db, 'users/' + uid + '/data'));
+      const remote = snap.exists() ? snap.val() : {};
+      SYNC_KEYS.forEach((key) => {
+        if (remote[key] !== undefined && remote[key] !== null) {
+          localStorage.setItem(key, remote[key]);
+        }
+      });
+    } catch (err) {
+      // If the pull fails (e.g. offline), fall back to whatever is already
+      // cached locally in this browser instead of blocking access.
+    }
+    sessionStorage.setItem('firebaseSyncedOnce', '1');
+    location.reload();
+  }
+
+  function hookSaveJSON(uid) {
+    if (window.__firebaseSyncHooked) return;
+    window.__firebaseSyncHooked = true;
+    const originalSaveJSON = window.saveJSON;
+    const pushTimers = {};
+    window.saveJSON = function (key, val) {
+      originalSaveJSON(key, val);
+      if (SYNC_KEYS.indexOf(key) === -1) return;
+      clearTimeout(pushTimers[key]);
+      pushTimers[key] = setTimeout(() => {
+        set(ref(db, 'users/' + uid + '/data/' + key), JSON.stringify(val)).catch(() => {});
+      }, 400);
+    };
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      if (!sessionStorage.getItem('firebaseSyncedOnce')) {
+        pullRemoteThenReload(user.uid);
+        return;
+      }
+      authGate.style.display = 'none';
+      appWrap.style.display = '';
+      hookSaveJSON(user.uid);
+    } else {
+      sessionStorage.removeItem('firebaseSyncedOnce');
+      authGate.style.display = 'flex';
+      appWrap.style.display = 'none';
+      loginStatus.textContent = '';
+    }
+  });
+</script>
+
+</body>
+</html>
