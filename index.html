@@ -5005,20 +5005,26 @@ renderDashboard();
 
 <script type="module">
   /* ---------------------------------------------------------------- */
-  /* FIREBASE SYNC + AUTH GATE                                         */
-  /* Fill in firebaseConfig below with your own project's values,      */
-  /* create yourself as a user under Authentication > Users in the     */
-  /* Firebase console (email/password provider), and set Realtime      */
-  /* Database rules so only that signed-in user can read/write their   */
-  /* own "users/<uid>/data" path.                                      */
+  /* FIREBASE SYNC + AUTH GATE                                        */
   /* ---------------------------------------------------------------- */
+
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+
   import {
-    getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged,
+    signOut
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
   import {
-    getDatabase, ref, get, set
+    getDatabase,
+    ref,
+    get,
+    set
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
 
   const firebaseConfig = {
 
@@ -5026,7 +5032,8 @@ renderDashboard();
 
     authDomain: "cemananc.firebaseapp.com",
 
-    databaseURL: "https://cemananc-default-rtdb.europe-west1.firebasedatabase.app",
+    databaseURL:
+      "https://cemananc-default-rtdb.europe-west1.firebasedatabase.app",
 
     projectId: "cemananc",
 
@@ -5040,9 +5047,29 @@ renderDashboard();
 
   };
 
-  // Only this Google account is allowed in — anyone else who signs in with
-  // a different Google account gets signed straight back out.
-  const ALLOWED_EMAIL = "gameongtx@gmail.com";
+
+  /* ---------------------------------------------------------------- */
+  /* FIREBASE INITIALIZATION                                          */
+  /* ---------------------------------------------------------------- */
+
+  const app = initializeApp(firebaseConfig);
+
+  const auth = getAuth(app);
+
+  const googleProvider = new GoogleAuthProvider();
+
+  const db = getDatabase(app);
+
+
+  // Always let the user choose which Google account to use
+  googleProvider.setCustomParameters({
+    prompt: "select_account"
+  });
+
+
+  /* ---------------------------------------------------------------- */
+  /* SYNC KEYS                                                        */
+  /* ---------------------------------------------------------------- */
 
   const SYNC_KEYS = [
     'pantryPlan_stock_v1',
@@ -5053,110 +5080,355 @@ renderDashboard();
     'pantryPlan_water_v1'
   ];
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const googleProvider = new GoogleAuthProvider();
-  const db = getDatabase(app);
+
+  /* ---------------------------------------------------------------- */
+  /* UI ELEMENTS                                                      */
+  /* ---------------------------------------------------------------- */
 
   const authGate = document.getElementById('authGate');
+
   const appWrap = document.getElementById('appWrap');
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
-  const loginError = document.getElementById('loginError');
-  const loginStatus = document.getElementById('loginStatus');
-  const logoutBtn = document.getElementById('logoutBtn');
-googleProvider.setCustomParameters({
-  prompt: 'select_account'
-});
-googleLoginBtn.addEventListener('click', async () => {
-  try {
+
+  const googleLoginBtn =
+    document.getElementById('googleLoginBtn');
+
+  const loginError =
+    document.getElementById('loginError');
+
+  const loginStatus =
+    document.getElementById('loginStatus');
+
+  const logoutBtn =
+    document.getElementById('logoutBtn');
+
+
+  /* ---------------------------------------------------------------- */
+  /* GOOGLE LOGIN                                                     */
+  /* ---------------------------------------------------------------- */
+
+  googleLoginBtn.addEventListener('click', async () => {
+
     loginError.textContent = '';
-    loginStatus.textContent = 'Se deschide Google...';
 
-    await signInWithPopup(auth, googleProvider);
+    loginStatus.textContent =
+      'Se autentifică…';
 
-  } catch (err) {
-    console.error(err);
+    try {
 
-    loginStatus.textContent = '';
-    loginError.textContent =
-      'Autentificare eșuată: ' + err.message;
-  }
-});
+      await signInWithPopup(
+        auth,
+        googleProvider
+      );
 
-  logoutBtn.addEventListener('click', () => {
-    signOut(auth);
+    } catch (err) {
+
+      console.error(
+        'Google login error:',
+        err
+      );
+
+      loginStatus.textContent = '';
+
+      loginError.textContent =
+        'Autentificare eșuată: ' +
+        (err.message || err.code);
+
+    }
+
   });
 
-  // Pulls the latest data from Firebase on every page load (not just once
-  // per browser session). If anything differs from what's cached locally,
-  // it reloads the page once so the app initializes with the fresh data.
-  // If nothing differs, no reload happens, so this never loops.
-  async function syncFromFirebaseThenShow(uid) {
-    loginStatus.textContent = 'Se sincronizează datele…';
-    let changed = false;
-    try {
-      const snap = await get(ref(db, 'users/' + uid + '/data'));
-      const remote = snap.exists() ? snap.val() : {};
-      SYNC_KEYS.forEach((key) => {
-        if (remote[key] !== undefined && remote[key] !== null) {
-          if (localStorage.getItem(key) !== remote[key]) {
-            localStorage.setItem(key, remote[key]);
-            changed = true;
-          }
-        }
-      });
-    } catch (err) {
-      // If the pull fails (e.g. offline), fall back to whatever is already
-      // cached locally in this browser instead of blocking access.
+
+  /* ---------------------------------------------------------------- */
+  /* LOGOUT                                                           */
+  /* ---------------------------------------------------------------- */
+
+  logoutBtn.addEventListener('click', async () => {
+
+    await signOut(auth);
+
+  });
+
+
+  /* ---------------------------------------------------------------- */
+  /* CHECK IF USER IS AUTHORIZED                                      */
+  /*                                                                    */
+  /* Checks:                                                           */
+  /*                                                                    */
+  /* allowedUsers/{USER_UID}/allowed                                   */
+  /*                                                                    */
+  /* The user must have:                                               */
+  /*                                                                    */
+  /* allowed: true                                                     */
+  /* ---------------------------------------------------------------- */
+
+  async function isUserAllowed(user) {
+
+    const allowedUserRef = ref(
+      db,
+      'allowedUsers/' + user.uid
+    );
+
+    const snapshot =
+      await get(allowedUserRef);
+
+    if (!snapshot.exists()) {
+      return false;
     }
-    if (changed) {
-      location.reload();
-      return;
-    }
-    authGate.style.display = 'none';
-    appWrap.style.display = '';
-    loginStatus.textContent = '';
-    hookSaveJSON(uid);
+
+    const data = snapshot.val();
+
+    return data &&
+           data.allowed === true;
+
   }
+
+
+  /* ---------------------------------------------------------------- */
+  /* LOAD USER DATA FROM FIREBASE                                     */
+  /* ---------------------------------------------------------------- */
+
+  async function syncFromFirebaseThenShow(uid) {
+
+    loginStatus.textContent =
+      'Se sincronizează datele…';
+
+    let changed = false;
+
+
+    try {
+
+      const snap = await get(
+        ref(db, 'users/' + uid + '/data')
+      );
+
+
+      const remote =
+        snap.exists()
+          ? snap.val()
+          : {};
+
+
+      SYNC_KEYS.forEach((key) => {
+
+        if (
+          remote[key] !== undefined &&
+          remote[key] !== null
+        ) {
+
+          if (
+            localStorage.getItem(key) !==
+            remote[key]
+          ) {
+
+            localStorage.setItem(
+              key,
+              remote[key]
+            );
+
+            changed = true;
+
+          }
+
+        }
+
+      });
+
+
+    } catch (err) {
+
+      console.error(
+        'Firebase sync error:',
+        err
+      );
+
+    }
+
+
+    // Reload once if newer Firebase data was found
+    if (changed) {
+
+      location.reload();
+
+      return;
+
+    }
+
+
+    // Show app
+    authGate.style.display = 'none';
+
+    appWrap.style.display = '';
+
+    loginStatus.textContent = '';
+
+
+    // Enable saving to Firebase
+    hookSaveJSON(uid);
+
+  }
+
+
+  /* ---------------------------------------------------------------- */
+  /* SAVE USER DATA TO FIREBASE                                       */
+  /* ---------------------------------------------------------------- */
 
   function hookSaveJSON(uid) {
-    if (window.__firebaseSyncHooked) return;
-    window.__firebaseSyncHooked = true;
-    const originalSaveJSON = window.saveJSON;
-    const pushTimers = {};
-    window.saveJSON = function (key, val) {
-      originalSaveJSON(key, val);
-      if (SYNC_KEYS.indexOf(key) === -1) return;
-      clearTimeout(pushTimers[key]);
-      pushTimers[key] = setTimeout(() => {
-        set(ref(db, 'users/' + uid + '/data/' + key), JSON.stringify(val)).catch(() => {});
-      }, 400);
-    };
-  }
 
- onAuthStateChanged(auth, (user) => {
-  if (user) {
-
-    // Only allow this specific email
-    if (
-      (user.email || '').toLowerCase() !==
-      ALLOWED_EMAIL.toLowerCase()
-    ) {
-      loginError.textContent =
-        'Acest cont Google nu are acces la această aplicație.';
-
-      signOut(auth);
+    // Prevent adding multiple hooks
+    if (window.__firebaseSyncHooked) {
       return;
     }
 
-    syncFromFirebaseThenShow(user.uid);
 
-  } else {
-    authGate.style.display = 'flex';
-    appWrap.style.display = 'none';
-    loginStatus.textContent = '';
+    window.__firebaseSyncHooked = true;
+
+
+    const originalSaveJSON =
+      window.saveJSON;
+
+
+    const pushTimers = {};
+
+
+    window.saveJSON =
+      function (key, val) {
+
+        // Run original localStorage save
+        originalSaveJSON(
+          key,
+          val
+        );
+
+
+        // Only sync relevant keys
+        if (
+          SYNC_KEYS.indexOf(key) === -1
+        ) {
+          return;
+        }
+
+
+        clearTimeout(
+          pushTimers[key]
+        );
+
+
+        // Small delay to avoid too many writes
+        pushTimers[key] =
+          setTimeout(() => {
+
+            set(
+              ref(
+                db,
+                'users/' +
+                uid +
+                '/data/' +
+                key
+              ),
+
+              JSON.stringify(val)
+
+            ).catch((err) => {
+
+              console.error(
+                'Firebase save error:',
+                err
+              );
+
+            });
+
+          }, 400);
+
+      };
+
   }
-});
+
+
+  /* ---------------------------------------------------------------- */
+  /* AUTH STATE                                                       */
+  /* ---------------------------------------------------------------- */
+
+  onAuthStateChanged(
+    auth,
+
+    async (user) => {
+
+      if (user) {
+
+        try {
+
+          loginError.textContent = '';
+
+          loginStatus.textContent =
+            'Se verifică accesul…';
+
+
+          // Check authorization in Firebase
+          const allowed =
+            await isUserAllowed(user);
+
+
+          if (!allowed) {
+
+            loginStatus.textContent = '';
+
+
+            loginError.textContent =
+              'Acest cont nu are acces la această aplicație.';
+
+
+            // Sign unauthorized user out
+            await signOut(auth);
+
+            return;
+
+          }
+
+
+          // User is authorized
+          await syncFromFirebaseThenShow(
+            user.uid
+          );
+
+
+        } catch (err) {
+
+          console.error(
+            'Authorization error:',
+            err
+          );
+
+
+          loginStatus.textContent = '';
+
+
+          loginError.textContent =
+            'Eroare la verificarea accesului.';
+
+
+          await signOut(auth);
+
+        }
+
+
+      } else {
+
+        authGate.style.display =
+          'flex';
+
+
+        appWrap.style.display =
+          'none';
+
+
+        loginStatus.textContent = '';
+
+      }
+
+    }
+
+  );
+
 </script>
 
 </body>
