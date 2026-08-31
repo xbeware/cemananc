@@ -5014,7 +5014,7 @@ renderDashboard();
   /* ---------------------------------------------------------------- */
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
-    getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+    getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import {
     getDatabase, ref, get, set
@@ -5042,7 +5042,7 @@ renderDashboard();
 
   // Only this Google account is allowed in — anyone else who signs in with
   // a different Google account gets signed straight back out.
-  const ALLOWED_EMAIL = "gameongtx@gmail.com";
+    const ALLOWED_EMAIL = "gameongtx@gmail.com";
 
   const SYNC_KEYS = [
     'pantryPlan_stock_v1',
@@ -5067,14 +5067,19 @@ renderDashboard();
 
   googleLoginBtn.addEventListener('click', async () => {
     loginError.textContent = '';
-    loginStatus.textContent = 'Se autentifică…';
+    loginStatus.textContent = 'Se redirecționează către Google…';
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
+      // Browser navigates away here; nothing else runs until it returns.
     } catch (err) {
       loginStatus.textContent = '';
       loginError.textContent = 'Autentificare eșuată. Încearcă din nou.';
     }
   });
+
+  // After returning from Google's login page, this picks up the result.
+  // Errors here are ignored on a normal page load (no redirect happened).
+  getRedirectResult(auth).catch(() => {});
 
   logoutBtn.addEventListener('click', () => {
     signOut(auth);
