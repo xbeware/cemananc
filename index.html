@@ -5064,17 +5064,24 @@ renderDashboard();
   const loginError = document.getElementById('loginError');
   const loginStatus = document.getElementById('loginStatus');
   const logoutBtn = document.getElementById('logoutBtn');
-
-  googleLoginBtn.addEventListener('click', async () => {
+provider.setCustomParameters({
+  prompt: 'select_account'
+});
+googleLoginBtn.addEventListener('click', async () => {
+  try {
     loginError.textContent = '';
-    loginStatus.textContent = 'Se autentifică…';
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      loginStatus.textContent = '';
-      loginError.textContent = 'Autentificare eșuată. Încearcă din nou.';
-    }
-  });
+    loginStatus.textContent = 'Se deschide Google...';
+
+    await signInWithPopup(auth, googleProvider);
+
+  } catch (err) {
+    console.error(err);
+
+    loginStatus.textContent = '';
+    loginError.textContent =
+      'Autentificare eșuată: ' + err.message;
+  }
+});
 
   logoutBtn.addEventListener('click', () => {
     signOut(auth);
@@ -5127,21 +5134,29 @@ renderDashboard();
     };
   }
 
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      if ((user.email || '').toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
-        loginStatus.textContent = '';
-        loginError.textContent = 'Acest cont Google nu are acces la această aplicație.';
-        signOut(auth);
-        return;
-      }
-      syncFromFirebaseThenShow(user.uid);
-    } else {
-      authGate.style.display = 'flex';
-      appWrap.style.display = 'none';
-      loginStatus.textContent = '';
+ onAuthStateChanged(auth, (user) => {
+  if (user) {
+
+    // Only allow this specific email
+    if (
+      (user.email || '').toLowerCase() !==
+      ALLOWED_EMAIL.toLowerCase()
+    ) {
+      loginError.textContent =
+        'Acest cont Google nu are acces la această aplicație.';
+
+      signOut(auth);
+      return;
     }
-  });
+
+    syncFromFirebaseThenShow(user.uid);
+
+  } else {
+    authGate.style.display = 'flex';
+    appWrap.style.display = 'none';
+    loginStatus.textContent = '';
+  }
+});
 </script>
 
 </body>
