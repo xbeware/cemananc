@@ -168,6 +168,7 @@
   .meal.evening{--cat-color:var(--rust);}
   .meal.bigmeal1{--cat-color:var(--paprika);}
   .meal.bigmeal2{--cat-color:var(--plum);}
+  .meal.cheat{--cat-color:var(--blue);}
 
   .meal-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:12px;}
   .meal-head h3{font-family:'Fraunces',serif;font-weight:600;font-size:17.5px;margin:0;display:flex;align-items:center;gap:8px;}
@@ -547,6 +548,17 @@ const categories = [
     { key:"casein", name: "Pudră de cazeină", unit: "măsuri", max: 20, step: 1, def: 6 },
     { key:"protein_bar", name: "Batoane proteice", unit: "buc", max: 10, step: 1, def: 3 },
   ]},
+  { name: "Mâncare ocazională (cheat meals)", color: "#2A5B8A", items: [
+    { key:"snitel_pui", name: "Șnițel de pui (pané)", unit: "g", max: 1000, step: 50, def: 300 },
+    { key:"cartofi_prajiti", name: "Cartofi prăjiți", unit: "g", max: 1000, step: 50, def: 300 },
+    { key:"shaorma_pui", name: "Shaorma de pui", unit: "buc", max: 4, step: 1, def: 1 },
+    { key:"shaorma_vita", name: "Shaorma de vită", unit: "buc", max: 4, step: 1, def: 1 },
+    { key:"burger_vita", name: "Burger de vită", unit: "buc", max: 4, step: 1, def: 1 },
+    { key:"corn_ciocolata", name: "Corn cu ciocolată", unit: "buc", max: 6, step: 1, def: 2 },
+    { key:"corn_unt", name: "Corn cu unt", unit: "buc", max: 6, step: 1, def: 2 },
+    { key:"eugenia", name: "Eugenie", unit: "buc", max: 10, step: 1, def: 4 },
+    { key:"cereale_nesquick", name: "Cereale Nesquik", unit: "g", max: 500, step: 25, def: 200 },
+  ]},
 ];
 
 // flat lookup: key -> {name, unit}
@@ -611,6 +623,16 @@ const NUTRITION = {
   whey:{kcal:120,protein:24,per:1},
   casein:{kcal:110,protein:24,per:1},
   protein_bar:{kcal:200,protein:20,per:1},
+  // ---- ocazionale / cheat meals (valori estimative) ----
+  snitel_pui:{kcal:250,protein:20,per:100},        // piept de pui pané, prăjit
+  cartofi_prajiti:{kcal:312,protein:3.4,per:100},  // cartofi prăjiți standard
+  shaorma_pui:{kcal:550,protein:28,per:1},         // 1 shaorma medie de pui, la pachet
+  shaorma_vita:{kcal:600,protein:30,per:1},        // 1 shaorma medie de vită, la pachet
+  burger_vita:{kcal:550,protein:28,per:1},         // 1 burger de vită cu chiflă și brânză
+  corn_ciocolata:{kcal:300,protein:5,per:1},       // 1 corn/croissant cu ciocolată
+  corn_unt:{kcal:260,protein:5,per:1},              // 1 corn/croissant cu unt
+  eugenia:{kcal:130,protein:1.5,per:1},             // 1 biscuit Eugenia (~33g)
+  cereale_nesquick:{kcal:380,protein:6,per:100},   // cereale ciocolatate tip Nesquik, uscate
 };
 
 const mealTypes3 = [
@@ -3547,6 +3569,92 @@ const mealTypes3 = [
         "id": "m3-evening-27"
       }
     ]
+  },
+  {
+    "type": "cheat",
+    "label": "Ocazional (nu ideal pt. masă musculară)",
+    "icon": "🍔",
+    "options": [
+      {
+        "day": "oricând, cu moderație",
+        "text": "Șnițel de pui pané (300g) cu cartofi prăjiți (250g)",
+        "need": [
+          { "k": "snitel_pui", "q": 300 },
+          { "k": "cartofi_prajiti", "q": 250 }
+        ],
+        "id": "m3-cheat-0"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "Shaorma de pui, la pachet",
+        "need": [
+          { "k": "shaorma_pui", "q": 1 }
+        ],
+        "id": "m3-cheat-1"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "Shaorma de vită, la pachet",
+        "need": [
+          { "k": "shaorma_vita", "q": 1 }
+        ],
+        "id": "m3-cheat-2"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "Burger de vită cu cartofi prăjiți (150g)",
+        "need": [
+          { "k": "burger_vita", "q": 1 },
+          { "k": "cartofi_prajiti", "q": 150 }
+        ],
+        "id": "m3-cheat-3"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "Corn cu ciocolată + un pahar de lapte",
+        "need": [
+          { "k": "corn_ciocolata", "q": 1 },
+          { "k": "milk", "q": 200 }
+        ],
+        "id": "m3-cheat-4"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "Corn cu unt + un pahar de lapte",
+        "need": [
+          { "k": "corn_unt", "q": 1 },
+          { "k": "milk", "q": 150 }
+        ],
+        "id": "m3-cheat-5"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "2 Eugenii",
+        "need": [
+          { "k": "eugenia", "q": 2 }
+        ],
+        "id": "m3-cheat-6"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "Bol cu lapte și cereale Nesquik (50g cereale, 250ml lapte)",
+        "need": [
+          { "k": "cereale_nesquick", "q": 50 },
+          { "k": "milk", "q": 250 }
+        ],
+        "id": "m3-cheat-7"
+      },
+      {
+        "day": "oricând, cu moderație",
+        "text": "3 ouă ochiuri prăjite în ulei, cu 2 felii de pâine",
+        "need": [
+          { "k": "eggs", "q": 3 },
+          { "k": "olive_oil", "q": 10 },
+          { "k": "bread", "q": 2 }
+        ],
+        "id": "m3-cheat-8"
+      }
+    ]
   }
 ];
 
@@ -4722,14 +4830,48 @@ function saveEatenState(){ saveJSON(LS_EATEN_KEY, eatenState); }
 function isEaten(optId){
   return eatenState.items.some(it => it.id === optId);
 }
+
+/* Deduct (sign=-1) or restore (sign=+1) a recipe's ingredients from the
+   live pantry stock, keeping the pantry tab's checkbox/slider/number UI
+   and localStorage in sync, then recompute which recipes are feasible. */
+function adjustStockForNeed(need, sign){
+  need.forEach(n => {
+    const reg = pantryRegistry[n.k];
+    if (!reg) return; // ingredient not in pantry (shouldn't normally happen)
+
+    const before = stock[n.k] || 0;
+    let after = before + sign * n.q;
+    after = Math.max(0, Math.round(after * 1000) / 1000);
+    if (after > reg.item.max) after = reg.item.max;
+
+    stock[n.k] = after;
+    reg.num.value = after;
+    reg.range.value = after;
+
+    const isHave = after > 0;
+    reg.checkbox.checked = isHave;
+    reg.row.classList.toggle('have', isHave);
+    reg.needTag.style.display = isHave ? 'none' : 'inline-block';
+    reg.haveTag.style.display = isHave ? 'inline-block' : 'none';
+
+    savePantryItem(n.k, isHave, after);
+  });
+  updatePantrySummary();
+  recomputePlan();
+}
+
 function toggleEaten(opt, mealLabel){
   const idx = eatenState.items.findIndex(it => it.id === opt.id);
   if (idx >= 0){
     eatenState.items.splice(idx, 1);
+    // undo: put the ingredients back in the pantry
+    adjustStockForNeed(opt.need, +1);
   } else {
     eatenState = loadEatenState(); // re-check date rollover before adding
     const macros = macrosForNeed(opt.need);
     eatenState.items.push({ id: opt.id, text: opt.text, mealLabel, kcal: macros.kcal, protein: macros.protein });
+    // mark as eaten: remove the ingredients used from the pantry
+    adjustStockForNeed(opt.need, -1);
   }
   saveEatenState();
   renderDashboard();
