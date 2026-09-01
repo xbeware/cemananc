@@ -4516,6 +4516,7 @@ if (currentAppTab === 'plan' || currentAppTab === 'dashboard') {
 /* ---------------------------------------------------------------- */
 const catsEl = document.getElementById('categories');
 let allItems = [];
+const pantryRegistry = {}; // item.key -> live DOM refs, used to patch in remote (Firebase) changes
 
 categories.forEach((cat, ci) => {
   const catEl = document.createElement('div');
@@ -4556,6 +4557,8 @@ categories.forEach((cat, ci) => {
     const num = row.querySelector('#num-' + id);
     const needTag = row.querySelector('#need-' + id);
     const haveTag = row.querySelector('#have-' + id);
+
+    pantryRegistry[item.key] = { checkbox, range, num, needTag, haveTag, row, item };
 
     // initial stock value
     stock[item.key] = initChecked ? parseFloat(initQty || 0) : 0;
@@ -5001,6 +5004,76 @@ function renderDashboard(){
   }
 }
 renderDashboard();
+
+/* ---------------------------------------------------------------- */
+/* APPLY REMOTE STATE — called by the Firebase realtime listener     */
+/* to patch the live UI in place (no page reload) when data changes  */
+/* on another tab/device.                                            */
+/* ---------------------------------------------------------------- */
+function applyRemotePantryStock(data){
+  Object.keys(data || {}).forEach((key) => {
+    const entry = pantryRegistry[key];
+    if (!entry) return;
+
+    // Don't yank a control out from under the user while they're mid-edit
+    if (document.activeElement === entry.checkbox ||
+        document.activeElement === entry.range ||
+        document.activeElement === entry.num) return;
+
+    const val = data[key] || {};
+    const checked = !!val.checked;
+    const qty = (val.qty !== undefined && val.qty !== null) ? val.qty : entry.item.def;
+
+    entry.checkbox.checked = checked;
+    entry.range.value = qty;
+    entry.num.value = qty;
+    entry.row.classList.toggle('have', checked);
+    entry.needTag.style.display = checked ? 'none' : 'inline-block';
+    entry.haveTag.style.display = checked ? 'inline-block' : 'none';
+
+    stock[key] = checked ? parseFloat(qty || 0) : 0;
+    pantryStateObj[key] = { checked, qty: parseFloat(qty) || 0 };
+  });
+  updatePantrySummary();
+  recomputePlan();
+}
+
+function applyRemoteProfile(raw){
+  let data;
+  try { data = JSON.parse(raw); } catch(e){ return; }
+  if (document.activeElement && document.activeElement.id && document.activeElement.id.startsWith('p-')) return; // mid-edit
+  profile = Object.assign({}, defaultProfile, data);
+  applyProfileToInputs();
+  renderDashboard();
+}
+
+function applyRemoteEaten(raw){
+  let data;
+  try { data = JSON.parse(raw); } catch(e){ return; }
+  eatenState = data;
+  renderDashboard();
+  optionRegistry.forEach(reg => {
+    const btn = reg.el.querySelector('.eatbtn');
+    if (!btn) return;
+    const eaten = isEaten(reg.opt.id);
+    btn.textContent = eaten ? '✓ mâncat azi' : 'Am mâncat asta';
+    btn.classList.toggle('eaten', eaten);
+  });
+}
+
+function applyRemoteWater(raw){
+  let data;
+  try { data = JSON.parse(raw); } catch(e){ return; }
+  waterState = data;
+  renderDashboard();
+}
+
+window.AppSync = {
+  applyRemotePantryStock,
+  applyRemoteProfile,
+  applyRemoteEaten,
+  applyRemoteWater
+};
 </script>
 
 <script type="module">
@@ -5022,7 +5095,8 @@ renderDashboard();
     getDatabase,
     ref,
     get,
-    set
+    set,
+    onValue
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 
@@ -5079,6 +5153,10 @@ renderDashboard();
     'pantryPlan_eaten_v1',
     'pantryPlan_water_v1'
   ];
+
+  // Holds the unsubscribe function for the live Firebase listener,
+  // so we can detach it cleanly on logout / re-login.
+  let unsubscribeRealtimeSync = null;
 
 
   /* ---------------------------------------------------------------- */
@@ -5265,6 +5343,9 @@ renderDashboard();
     // Enable saving to Firebase
     hookSaveJSON(uid);
 
+    // Keep listening for changes made elsewhere (other tab/device)
+    attachRealtimeSync(uid);
+
   }
 
 
@@ -5345,6 +5426,82 @@ renderDashboard();
 
 
   /* ---------------------------------------------------------------- */
+  /* LIVE SYNC FROM FIREBASE                                          */
+  /*                                                                    */
+  /* Keeps listening after login (instead of one-time get()), so       */
+  /* changes made on another tab/device show up here immediately,      */
+  /* patched into the live UI — no page reload needed.                 */
+  /* ---------------------------------------------------------------- */
+
+  function attachRealtimeSync(uid) {
+
+    if (unsubscribeRealtimeSync) {
+      unsubscribeRealtimeSync();
+      unsubscribeRealtimeSync = null;
+    }
+
+    const dataRef = ref(db, 'users/' + uid + '/data');
+
+    unsubscribeRealtimeSync = onValue(
+      dataRef,
+      (snapshot) => {
+
+        const remote = snapshot.exists() ? snapshot.val() : {};
+
+        SYNC_KEYS.forEach((key) => {
+
+          if (remote[key] === undefined || remote[key] === null) return;
+
+          // Nothing to do if this device already has this exact value —
+          // this also naturally filters out the echo from our own writes,
+          // since saveJSON() already wrote it to localStorage first.
+          if (localStorage.getItem(key) === remote[key]) return;
+
+          localStorage.setItem(key, remote[key]);
+
+          switch (key) {
+
+            case 'pantryPlan_stock_v1':
+              try {
+                window.AppSync.applyRemotePantryStock(JSON.parse(remote[key]) || {});
+              } catch (e) {
+                console.error('Live sync (pantry) error:', e);
+              }
+              break;
+
+            case 'pantryPlan_profile_v1':
+              window.AppSync.applyRemoteProfile(remote[key]);
+              break;
+
+            case 'pantryPlan_eaten_v1':
+              window.AppSync.applyRemoteEaten(remote[key]);
+              break;
+
+            case 'pantryPlan_water_v1':
+              window.AppSync.applyRemoteWater(remote[key]);
+              break;
+
+            // pantryPlan_ui_v1 (active tab/mode) and the unused
+            // pantryPlan_daylog_v1 are stored above but intentionally not
+            // forced onto the live UI, so a change elsewhere doesn't yank
+            // this screen to a different tab while it's being used.
+            default:
+              break;
+
+          }
+
+        });
+
+      },
+      (err) => {
+        console.error('Firebase realtime sync error:', err);
+      }
+    );
+
+  }
+
+
+  /* ---------------------------------------------------------------- */
   /* AUTH STATE                                                       */
   /* ---------------------------------------------------------------- */
 
@@ -5412,6 +5569,11 @@ renderDashboard();
 
 
       } else {
+
+        if (unsubscribeRealtimeSync) {
+          unsubscribeRealtimeSync();
+          unsubscribeRealtimeSync = null;
+        }
 
         authGate.style.display =
           'flex';
