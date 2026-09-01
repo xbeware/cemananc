@@ -119,6 +119,21 @@
   .qty-controls input[type="number"]:focus{outline:none;}
   .qty-controls .unit{font-size:12.5px;color:var(--ink-soft);}
 
+  .eat-controls{display:none;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px dashed #cfe3d8;flex-wrap:wrap;}
+  .item.have .eat-controls{display:flex;}
+  .eat-controls .eat-label{font-size:12.5px;color:var(--ink-soft);font-weight:600;white-space:nowrap;}
+  .eat-controls .qty-num-wrap{display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:4px 8px;flex:0 0 auto;}
+  .eat-controls input[type="number"]{width:60px;border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--ink);background:transparent;text-align:right;}
+  .eat-controls input[type="number"]:focus{outline:none;}
+  .eatbtn-small{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:12px;white-space:nowrap;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);
+    border-radius:7px;padding:6px 12px;cursor:pointer;transition:all .15s ease;
+  }
+  .eatbtn-small:hover{border-color:var(--have);color:var(--have);}
+  .eatbtn-small.flash{background:var(--have);color:#fff;border-color:var(--have);}
+  .eatbtn-small:disabled{opacity:.45;cursor:default;}
+
   /* ---- plan tab ---- */
   .modetoggle{display:flex;gap:8px;margin-bottom:16px;align-items:center;}
   .modetoggle .modelabel{font-size:13px;color:var(--ink-soft);margin-right:4px;}
@@ -4548,6 +4563,14 @@ categories.forEach((cat, ci) => {
           <span class="unit">${item.unit}</span>
         </div>
       </div>
+      <div class="eat-controls" id="eat-${id}">
+        <span class="eat-label">Am mâncat:</span>
+        <div class="qty-num-wrap">
+          <input type="number" id="eatnum-${id}" min="0" max="${initQty}" step="${item.step}" value="${item.step}">
+          <span class="unit">${item.unit}</span>
+        </div>
+        <button type="button" class="eatbtn-small" id="eatbtn-${id}">🍽 Am mâncat</button>
+      </div>
     `;
     catEl.appendChild(row);
     allItems.push(id);
@@ -4557,15 +4580,24 @@ categories.forEach((cat, ci) => {
     const num = row.querySelector('#num-' + id);
     const needTag = row.querySelector('#need-' + id);
     const haveTag = row.querySelector('#have-' + id);
+    const eatNum = row.querySelector('#eatnum-' + id);
+    const eatBtn = row.querySelector('#eatbtn-' + id);
 
-    pantryRegistry[item.key] = { checkbox, range, num, needTag, haveTag, row, item };
+    pantryRegistry[item.key] = { checkbox, range, num, needTag, haveTag, eatNum, eatBtn, row, item };
 
     // initial stock value
     stock[item.key] = initChecked ? parseFloat(initQty || 0) : 0;
 
+    function clampEatNum(){
+      const cur = parseFloat(num.value || 0);
+      eatNum.max = cur;
+      if (parseFloat(eatNum.value || 0) > cur) eatNum.value = cur;
+    }
+
     function syncStock(){
       stock[item.key] = checkbox.checked ? parseFloat(num.value || 0) : 0;
       savePantryItem(item.key, checkbox.checked, num.value);
+      clampEatNum();
       recomputePlan();
     }
 
@@ -4583,6 +4615,63 @@ categories.forEach((cat, ci) => {
       let v = Math.min(Math.max(num.value, 0), item.max);
       range.value = v;
       syncStock();
+    });
+
+    eatNum.addEventListener('input', () => {
+      const cur = parseFloat(num.value || 0);
+      let v = parseFloat(eatNum.value);
+      if (isNaN(v) || v < 0) v = 0;
+      if (v > cur) v = cur;
+      eatNum.value = v;
+    });
+
+    eatBtn.addEventListener('click', () => {
+      const currentQty = parseFloat(num.value || 0);
+      let eatQty = parseFloat(eatNum.value || 0);
+      if (!checkbox.checked || currentQty <= 0 || eatQty <= 0) return;
+      if (eatQty > currentQty) eatQty = currentQty;
+
+      const newQty = Math.round((currentQty - eatQty) * 1000) / 1000;
+      num.value = newQty;
+      range.value = newQty;
+
+      if (newQty <= 0){
+        checkbox.checked = false;
+        row.classList.remove('have');
+        needTag.style.display = 'inline-block';
+        haveTag.style.display = 'none';
+      }
+
+      syncStock();
+      updatePantrySummary();
+
+      // log the eaten quantity into today's dashboard log
+      const nutri = NUTRITION[item.key];
+      let kcal = 0, protein = 0;
+      if (nutri){
+        const factor = eatQty / nutri.per;
+        kcal = Math.round(factor * nutri.kcal);
+        protein = Math.round(factor * nutri.protein * 10) / 10;
+      }
+      eatenState = loadEatenState(); // re-check date rollover before adding
+      eatenState.items.push({
+        id: 'pantry-' + item.key + '-' + Date.now(),
+        text: `${item.name} · ${eatQty}${item.unit}`,
+        mealLabel: 'Din cămară',
+        kcal, protein
+      });
+      saveEatenState();
+      renderDashboard();
+
+      // quick visual feedback + reset the input to a sensible default
+      eatNum.value = Math.min(item.step, newQty) || 0;
+      const originalLabel = '🍽 Am mâncat';
+      eatBtn.textContent = '✓ adăugat';
+      eatBtn.classList.add('flash');
+      setTimeout(() => {
+        eatBtn.textContent = originalLabel;
+        eatBtn.classList.remove('flash');
+      }, 900);
     });
   });
 
@@ -5030,6 +5119,12 @@ function applyRemotePantryStock(data){
     entry.row.classList.toggle('have', checked);
     entry.needTag.style.display = checked ? 'none' : 'inline-block';
     entry.haveTag.style.display = checked ? 'inline-block' : 'none';
+
+    if (entry.eatNum && document.activeElement !== entry.eatNum){
+      const q = parseFloat(qty || 0);
+      entry.eatNum.max = q;
+      if (parseFloat(entry.eatNum.value || 0) > q) entry.eatNum.value = q;
+    }
 
     stock[key] = checked ? parseFloat(qty || 0) : 0;
     pantryStateObj[key] = { checked, qty: parseFloat(qty) || 0 };
