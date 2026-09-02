@@ -1550,6 +1550,8 @@ window.AppSync = {
 
   logoutBtn.addEventListener('click', async () => {
 
+    sessionStorage.removeItem('pantryPlan_syncReloadGuard_v1');
+
     await signOut(auth);
 
   });
@@ -1650,14 +1652,38 @@ window.AppSync = {
     }
 
 
-    // Reload once if newer Firebase data was found
+    // Reload once if newer Firebase data was found — but never more than
+    // once per tab session. Without this guard, a persistent mismatch
+    // between localStorage and Firebase (e.g. a formatting difference in
+    // one key) causes reload() to fire, the same check to run again on
+    // the fresh page load, find a "difference" again, and reload again —
+    // an infinite loop that looks like it's stuck on "Se sincronizează
+    // datele…". sessionStorage survives the reload (unlike a normal JS
+    // variable) so we can detect "we already tried this" and stop.
+    const RELOAD_GUARD_KEY = 'pantryPlan_syncReloadGuard_v1';
+
     if (changed) {
 
-      location.reload();
+      if (!sessionStorage.getItem(RELOAD_GUARD_KEY)) {
 
-      return;
+        sessionStorage.setItem(RELOAD_GUARD_KEY, '1');
+
+        location.reload();
+
+        return;
+
+      }
+
+      console.warn(
+        'Firebase sync: localStorage and remote data still differ after one reload — continuing without reloading again to avoid a loop.'
+      );
 
     }
+
+    // We're past the point of reloading for this login; clear the guard
+    // so a *future* legitimate sync (e.g. next login, or data pushed from
+    // another device before this tab reloads again) can still reload once.
+    sessionStorage.removeItem(RELOAD_GUARD_KEY);
 
 
     // Show app
