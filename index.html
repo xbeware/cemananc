@@ -1323,8 +1323,45 @@ function renderDashboard(){
       logList.appendChild(row);
     });
   }
+
+  // Push a per-day snapshot (consumed vs. target for every macro, plus the
+  // food list) to Firebase at users/{uid}/history/{date}. No-op until a user
+  // is logged in — window.pushDailyHistory is only defined by the Firebase
+  // module script after login. Debounced there, so calling this often
+  // (e.g. every eat/remove/water click) is cheap.
+  if (typeof window.pushDailyHistory === 'function'){
+    window.pushDailyHistory({
+      date: eatenState.date,
+      consumed: {
+        kcal: totalKcal,
+        protein: totalProtein,
+        carbs: displayCarbs,
+        fat: displayFat,
+        water: waterState.ml
+      },
+      targets: {
+        kcal: targets.calTarget,
+        protein: targets.proteinTarget,
+        carbs: targets.carbsTarget,
+        fat: targets.fatTarget,
+        water: targets.waterTarget
+      },
+      items: eatenState.items.map(it => ({
+        id: it.id,
+        text: it.text,
+        mealLabel: it.mealLabel,
+        kcal: it.kcal,
+        protein: it.protein,
+        carbs: typeof it.carbs === 'number' ? it.carbs : null,
+        fat: typeof it.fat === 'number' ? it.fat : null
+      })),
+      profile: profile,
+      updatedAt: Date.now()
+    });
+  }
 }
 renderDashboard();
+window.renderDashboard = renderDashboard; // lets the Firebase module force one push right after login
 
 /* ---------------------------------------------------------------- */
 /* APPLY REMOTE STATE — called by the Firebase realtime listener     */
@@ -1797,8 +1834,56 @@ window.AppSync = {
     // Enable saving to Firebase
     hookSaveJSON(uid);
 
+    // Enable the per-day history snapshot (users/{uid}/history/{date})
+    setupHistorySync(uid);
+
     // Keep listening for changes made elsewhere (other tab/device)
     attachRealtimeSync(uid);
+
+    // Force one dashboard render now, so today's history entry exists in
+    // Firebase immediately after login rather than waiting for the first
+    // meal/water/profile change.
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+
+  }
+
+
+  /* ---------------------------------------------------------------- */
+  /* SAVE DAILY HISTORY SNAPSHOT TO FIREBASE                          */
+  /*                                                                    */
+  /* Writes a full per-day snapshot (consumed vs. target for every      */
+  /* macro, plus the food list) to users/{uid}/history/{date}, called   */
+  /* from renderDashboard() in the main script via window.pushDailyHistory.*/
+  /* Debounced, and always overwrites the SAME day's node while that     */
+  /* day is still "today" — once the date rolls over, renderDashboard()  */
+  /* naturally starts targeting the new day's path, leaving the previous */
+  /* day's node untouched as a permanent historical record.              */
+  /* ---------------------------------------------------------------- */
+
+  let historyPushTimer = null;
+
+  function setupHistorySync(uid) {
+
+    window.pushDailyHistory = function (snapshot) {
+
+      clearTimeout(historyPushTimer);
+
+      historyPushTimer = setTimeout(() => {
+
+        const dateKey = snapshot.date;
+
+        if (!dateKey) return;
+
+        set(
+          ref(db, 'users/' + uid + '/history/' + dateKey),
+          snapshot
+        ).catch((err) => {
+          console.error('Firebase history save error:', err);
+        });
+
+      }, 800);
+
+    };
 
   }
 
@@ -2028,6 +2113,9 @@ window.AppSync = {
           unsubscribeRealtimeSync();
           unsubscribeRealtimeSync = null;
         }
+
+        clearTimeout(historyPushTimer);
+        window.pushDailyHistory = undefined;
 
         authGate.style.display =
           'flex';
