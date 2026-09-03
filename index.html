@@ -33,7 +33,7 @@
     --blue:#2A5B8A; --blue-tint:#E5EEF5;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%;}
   body{
     background:var(--bg);
     color:var(--ink);
@@ -100,13 +100,14 @@
   }
   .cat-head{
     display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;
-    user-select:none;background:linear-gradient(180deg,#fff,#faf9f4);
+    user-select:none;background:linear-gradient(180deg,#fff,#faf9f4);min-width:0;
   }
   .cat-head:hover{background:#f5f3ec;}
   .cat-head .swatch{width:10px;height:10px;border-radius:50%;background:var(--cat-color);display:inline-block;flex:0 0 auto;}
   .cat-head h2{
     font-family:'Fraunces',serif;font-weight:600;font-size:16.5px;margin:0;flex:1;
-    display:flex;align-items:center;gap:8px;
+    display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;
   }
   .cat-head .cat-badge{
     font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--ink-soft);
@@ -122,22 +123,35 @@
     padding:4px 12px 14px;border-top:1px solid var(--line);
   }
   .cat.open .cat-body{display:grid;}
+  @media (max-width:480px){
+    .cat-body{grid-template-columns:1fr;}
+  }
 
   .item{
     background:#f7f6f2;border:1px solid var(--line);border-radius:9px;
     padding:9px 11px;transition:background .15s ease,border-color .15s ease,grid-column .15s ease;
-    align-self:start;
+    align-self:start;min-width:0;
   }
   .item.have{background:var(--have-tint);border-color:#cfe3d8;}
   .item.expanded{grid-column:1 / -1;background:var(--paper);}
-  .item-row{display:flex;align-items:center;gap:9px;cursor:pointer;}
+  .item-row{display:flex;align-items:center;gap:8px;cursor:pointer;min-width:0;}
   .item-row label.name{
     display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;font-size:13.5px;font-weight:500;
     min-width:0;
   }
-  .item-row label.name span.txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* Let names wrap onto a second line rather than being cut off with
+     "…" — a full name on two lines is always more usable than a
+     truncated one, especially on narrow phone screens. */
+  .item-row label.name span.txt{overflow-wrap:anywhere;white-space:normal;line-height:1.25;}
   input[type="checkbox"]{width:18px;height:18px;accent-color:var(--have);cursor:pointer;flex:0 0 auto;}
-  .need-tag{font-size:10.5px;font-weight:600;color:var(--accent);background:var(--need-tint);padding:2px 7px;border-radius:20px;white-space:nowrap;flex:0 0 auto;}
+  /* Unchecked = "need to buy" is already implied by the un-tinted
+     background, so the indicator is just a small dot rather than a
+     wide text pill — that's what was eating all the horizontal space
+     and forcing item names to truncate on narrow screens. */
+  .need-tag{
+    font-size:0;width:7px;height:7px;min-width:7px;padding:0;border-radius:50%;
+    background:var(--accent);flex:0 0 auto;
+  }
   .have-tag{font-size:11px;font-weight:700;color:var(--have);white-space:nowrap;flex:0 0 auto;}
   .item-row .expand-hint{font-size:11px;color:var(--ink-soft);flex:0 0 auto;transition:transform .15s ease;}
   .item.expanded .expand-hint{transform:rotate(90deg);}
