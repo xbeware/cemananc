@@ -93,26 +93,58 @@
   .logoutbtn{font-size:12px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;float:right;margin-top:6px;}
   .logoutbtn:hover{color:var(--accent);border-color:var(--accent);}
 
-  /* ---- pantry tab ---- */
-  .cat{margin-bottom:28px;}
-  .cat h2{
-    font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin:0 0 12px;
+  /* ---- pantry tab: cupboard-style collapsible drawers ---- */
+  .cat{
+    margin-bottom:14px;background:var(--paper);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;
+  }
+  .cat-head{
+    display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;
+    user-select:none;background:linear-gradient(180deg,#fff,#faf9f4);
+  }
+  .cat-head:hover{background:#f5f3ec;}
+  .cat-head .swatch{width:10px;height:10px;border-radius:50%;background:var(--cat-color);display:inline-block;flex:0 0 auto;}
+  .cat-head h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:16.5px;margin:0;flex:1;
     display:flex;align-items:center;gap:8px;
   }
-  .cat h2 .swatch{width:10px;height:10px;border-radius:50%;background:var(--cat-color);display:inline-block;}
+  .cat-head .cat-badge{
+    font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--ink-soft);
+    background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:3px 10px;white-space:nowrap;
+  }
+  .cat-head .cat-badge.full{color:var(--have);border-color:#cfe3d8;background:var(--have-tint);}
+  .cat-head .chevron{
+    font-size:12px;color:var(--ink-soft);transition:transform .18s ease;flex:0 0 auto;
+  }
+  .cat.open .cat-head .chevron{transform:rotate(90deg);}
+  .cat-body{
+    display:none;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;
+    padding:4px 12px 14px;border-top:1px solid var(--line);
+  }
+  .cat.open .cat-body{display:grid;}
 
   .item{
-    background:var(--paper);border:1px solid var(--line);border-radius:10px;
-    padding:12px 16px;margin-bottom:8px;transition:background .15s ease,border-color .15s ease;
+    background:#f7f6f2;border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;transition:background .15s ease,border-color .15s ease,grid-column .15s ease;
+    align-self:start;
   }
   .item.have{background:var(--have-tint);border-color:#cfe3d8;}
-  .item-row{display:flex;align-items:center;gap:12px;}
-  .item-row label.name{display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;font-size:14.5px;font-weight:500;}
-  input[type="checkbox"]{width:19px;height:19px;accent-color:var(--have);cursor:pointer;flex:0 0 auto;}
-  .need-tag{font-size:12px;font-weight:600;color:var(--accent);background:var(--need-tint);padding:3px 9px;border-radius:20px;white-space:nowrap;}
-  .have-tag{font-size:12px;font-weight:600;color:var(--have);white-space:nowrap;}
+  .item.expanded{grid-column:1 / -1;background:var(--paper);}
+  .item-row{display:flex;align-items:center;gap:9px;cursor:pointer;}
+  .item-row label.name{
+    display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;font-size:13.5px;font-weight:500;
+    min-width:0;
+  }
+  .item-row label.name span.txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  input[type="checkbox"]{width:18px;height:18px;accent-color:var(--have);cursor:pointer;flex:0 0 auto;}
+  .need-tag{font-size:10.5px;font-weight:600;color:var(--accent);background:var(--need-tint);padding:2px 7px;border-radius:20px;white-space:nowrap;flex:0 0 auto;}
+  .have-tag{font-size:11px;font-weight:700;color:var(--have);white-space:nowrap;flex:0 0 auto;}
+  .item-row .expand-hint{font-size:11px;color:var(--ink-soft);flex:0 0 auto;transition:transform .15s ease;}
+  .item.expanded .expand-hint{transform:rotate(90deg);}
+  .item:not(.have) .expand-hint{visibility:hidden;}
+
   .qty-controls{display:none;align-items:center;gap:12px;margin-top:10px;padding-top:10px;border-top:1px dashed #cfe3d8;}
-  .item.have .qty-controls{display:flex;}
+  .item.have.expanded .qty-controls{display:flex;}
   .qty-controls input[type="range"]{flex:1;accent-color:var(--have);cursor:pointer;}
   .qty-controls .qty-num-wrap{display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:4px 8px;flex:0 0 auto;}
   .qty-controls input[type="number"]{width:60px;border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--ink);background:transparent;text-align:right;}
@@ -120,7 +152,7 @@
   .qty-controls .unit{font-size:12.5px;color:var(--ink-soft);}
 
   .eat-controls{display:none;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px dashed #cfe3d8;flex-wrap:wrap;}
-  .item.have .eat-controls{display:flex;}
+  .item.have.expanded .eat-controls{display:flex;}
   .eat-controls .eat-label{font-size:12.5px;color:var(--ink-soft);font-weight:600;white-space:nowrap;}
   .eat-controls .qty-num-wrap{display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:4px 8px;flex:0 0 auto;}
   .eat-controls input[type="number"]{width:60px;border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--ink);background:transparent;text-align:right;}
@@ -654,7 +686,23 @@ function buildPantryDOM(){
   categories.forEach((cat, ci) => {
   const catEl = document.createElement('div');
   catEl.className = 'cat';
-  catEl.innerHTML = `<h2 style="--cat-color:${cat.color}"><span class="swatch"></span>${cat.name}</h2>`;
+  catEl.id = 'cat-' + ci;
+  catEl.innerHTML = `
+    <div class="cat-head" id="cathead-${ci}">
+      <span class="swatch" style="--cat-color:${cat.color}"></span>
+      <h2 style="--cat-color:${cat.color}">${cat.name}</h2>
+      <span class="cat-badge" id="catbadge-${ci}">0/0</span>
+      <span class="chevron">›</span>
+    </div>
+    <div class="cat-body" id="catbody-${ci}"></div>
+  `;
+  const catBody = catEl.querySelector('.cat-body');
+  const catHead = catEl.querySelector('.cat-head');
+  catHead.addEventListener('click', () => {
+    catEl.classList.toggle('open');
+    saveCatOpenState();
+  });
+  if (openCats[ci]) catEl.classList.add('open');
 
   cat.items.forEach((item, ii) => {
     const id = `item-${ci}-${ii}`;
@@ -667,12 +715,11 @@ function buildPantryDOM(){
     row.id = 'row-' + id;
     row.innerHTML = `
       <div class="item-row">
-        <label class="name" for="${id}">
-          <input type="checkbox" id="${id}" ${initChecked ? 'checked' : ''}>
-          ${item.name}
-        </label>
+        <input type="checkbox" id="${id}" ${initChecked ? 'checked' : ''}>
+        <label class="name" for="${id}" onclick="event.preventDefault()"><span class="txt">${item.name}</span></label>
         <span class="need-tag" id="need-${id}" style="display:${initChecked ? 'none' : 'inline-block'}">de cumpărat</span>
-        <span class="have-tag" id="have-${id}" style="display:${initChecked ? 'inline-block' : 'none'}">✓ am deja</span>
+        <span class="have-tag" id="have-${id}" style="display:${initChecked ? 'inline-block' : 'none'}">✓ ${initQty}${item.unit}</span>
+        <span class="expand-hint">›</span>
       </div>
       <div class="qty-controls">
         <input type="range" id="range-${id}" min="0" max="${item.max}" step="${item.step}" value="${initQty}">
@@ -690,7 +737,7 @@ function buildPantryDOM(){
         <button type="button" class="eatbtn-small" id="eatbtn-${id}">🍽 Am mâncat</button>
       </div>
     `;
-    catEl.appendChild(row);
+    catBody.appendChild(row);
     allItems.push(id);
 
     const checkbox = row.querySelector('#' + id);
@@ -700,6 +747,7 @@ function buildPantryDOM(){
     const haveTag = row.querySelector('#have-' + id);
     const eatNum = row.querySelector('#eatnum-' + id);
     const eatBtn = row.querySelector('#eatbtn-' + id);
+    const itemRow = row.querySelector('.item-row');
 
     pantryRegistry[item.key] = { checkbox, range, num, needTag, haveTag, eatNum, eatBtn, row, item };
 
@@ -712,21 +760,43 @@ function buildPantryDOM(){
       if (parseFloat(eatNum.value || 0) > cur) eatNum.value = cur;
     }
 
+    function updateHaveTag(){
+      haveTag.textContent = `✓ ${num.value}${item.unit}`;
+    }
+
     function syncStock(){
       stock[item.key] = checkbox.checked ? parseFloat(num.value || 0) : 0;
       savePantryItem(item.key, checkbox.checked, num.value);
+      updateHaveTag();
       clampEatNum();
       recomputePlan();
     }
 
+    // Clicking anywhere on the row (except the checkbox / the controls
+    // themselves, which stop propagation below) toggles the expanded
+    // edit panel — this is what keeps the shelf compact until you need
+    // to actually change a quantity.
+    itemRow.addEventListener('click', () => {
+      if (!checkbox.checked) return; // nothing to edit until it's "have"
+      row.classList.toggle('expanded');
+    });
+
+    checkbox.addEventListener('click', (e) => e.stopPropagation());
     checkbox.addEventListener('change', () => {
       const isHave = checkbox.checked;
       row.classList.toggle('have', isHave);
       needTag.style.display = isHave ? 'none' : 'inline-block';
       haveTag.style.display = isHave ? 'inline-block' : 'none';
+      // auto-expand right after marking "have" so the quantity can be
+      // set immediately; auto-collapse when unchecked to stay compact
+      row.classList.toggle('expanded', isHave);
       syncStock();
       updatePantrySummary();
     });
+
+    range.addEventListener('click', (e) => e.stopPropagation());
+    num.addEventListener('click', (e) => e.stopPropagation());
+    eatNum.addEventListener('click', (e) => e.stopPropagation());
 
     range.addEventListener('input', () => { num.value = range.value; syncStock(); });
     num.addEventListener('input', () => {
@@ -743,7 +813,8 @@ function buildPantryDOM(){
       eatNum.value = v;
     });
 
-    eatBtn.addEventListener('click', () => {
+    eatBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const currentQty = parseFloat(num.value || 0);
       let eatQty = parseFloat(eatNum.value || 0);
       if (!checkbox.checked || currentQty <= 0 || eatQty <= 0) return;
@@ -756,6 +827,7 @@ function buildPantryDOM(){
       if (newQty <= 0){
         checkbox.checked = false;
         row.classList.remove('have');
+        row.classList.remove('expanded');
         needTag.style.display = 'inline-block';
         haveTag.style.display = 'none';
       }
@@ -795,6 +867,37 @@ function buildPantryDOM(){
 
     catsEl.appendChild(catEl);
   });
+
+  updateCatBadges();
+}
+
+/* ---------------------------------------------------------------- */
+/* CATEGORY DRAWER OPEN/CLOSED STATE                                  */
+/* ---------------------------------------------------------------- */
+const LS_CATOPEN_KEY = 'pantryPlan_catopen_v1';
+let openCats = loadJSON(LS_CATOPEN_KEY, {});
+function saveCatOpenState(){
+  const state = {};
+  document.querySelectorAll('.cat').forEach(el => {
+    const ci = el.id.replace('cat-', '');
+    state[ci] = el.classList.contains('open');
+  });
+  openCats = state;
+  saveJSON(LS_CATOPEN_KEY, state);
+}
+
+function updateCatBadges(){
+  categories.forEach((cat, ci) => {
+    const badge = document.getElementById('catbadge-' + ci);
+    if (!badge) return;
+    const total = cat.items.length;
+    const have = cat.items.filter(it => {
+      const reg = pantryRegistry[it.key];
+      return reg && reg.checkbox.checked;
+    }).length;
+    badge.textContent = have + '/' + total;
+    badge.classList.toggle('full', have === total && total > 0);
+  });
 }
 
 function updatePantrySummary(){
@@ -803,6 +906,7 @@ function updatePantrySummary(){
   document.getElementById('haveCount').textContent = haveCount;
   document.getElementById('needCount').textContent = total - haveCount;
   document.getElementById('totalCount').textContent = total;
+  updateCatBadges();
 }
 
 /* ---------------------------------------------------------------- */
@@ -1388,6 +1492,7 @@ function applyRemotePantryStock(data){
     entry.row.classList.toggle('have', checked);
     entry.needTag.style.display = checked ? 'none' : 'inline-block';
     entry.haveTag.style.display = checked ? 'inline-block' : 'none';
+    entry.haveTag.textContent = `✓ ${qty}${entry.item.unit}`;
 
     if (entry.eatNum && document.activeElement !== entry.eatNum){
       const q = parseFloat(qty || 0);
