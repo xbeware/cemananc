@@ -1695,7 +1695,7 @@ window.AppSync = {
 
 
   /* ---------------------------------------------------------------- */
-  /* CHECK IF USER IS AUTHORIZED                                      */
+  /* CHECK IF USER IS AUTHORIZED + RESOLVE SHARED DATA KEY            */
   /*                                                                    */
   /* Checks:                                                           */
   /*                                                                    */
@@ -1704,9 +1704,16 @@ window.AppSync = {
   /* The user must have:                                               */
   /*                                                                    */
   /* allowed: true                                                     */
+  /*                                                                    */
+  /* If allowedUsers/{USER_UID}/dataKey is also set, that value is     */
+  /* used as the path under users/{dataKey}/... instead of the user's  */
+  /* own UID — this is what lets two different Google accounts share  */
+  /* the same data/history node (set the same dataKey on both).        */
+  /* If dataKey is absent, the user's own UID is used as before, so    */
+  /* existing single-user entries keep working unchanged.              */
   /* ---------------------------------------------------------------- */
 
-  async function isUserAllowed(user) {
+  async function checkUserAccess(user) {
 
     const allowedUserRef = ref(
       db,
@@ -1717,13 +1724,16 @@ window.AppSync = {
       await get(allowedUserRef);
 
     if (!snapshot.exists()) {
-      return false;
+      return { allowed: false, dataKey: null };
     }
 
     const data = snapshot.val();
 
-    return data &&
-           data.allowed === true;
+    const allowed = !!(data && data.allowed === true);
+
+    const dataKey = (data && data.dataKey) ? data.dataKey : user.uid;
+
+    return { allowed, dataKey };
 
   }
 
@@ -1732,7 +1742,7 @@ window.AppSync = {
   /* LOAD USER DATA FROM FIREBASE                                     */
   /* ---------------------------------------------------------------- */
 
-  async function syncFromFirebaseThenShow(uid) {
+  async function syncFromFirebaseThenShow(dataKey) {
 
     loginStatus.textContent =
       'Se sincronizează datele…';
@@ -1743,7 +1753,7 @@ window.AppSync = {
     try {
 
       const snap = await get(
-        ref(db, 'users/' + uid + '/data')
+        ref(db, 'users/' + dataKey + '/data')
       );
 
 
@@ -1832,13 +1842,13 @@ window.AppSync = {
 
 
     // Enable saving to Firebase
-    hookSaveJSON(uid);
+    hookSaveJSON(dataKey);
 
-    // Enable the per-day history snapshot (users/{uid}/history/{date})
-    setupHistorySync(uid);
+    // Enable the per-day history snapshot (users/{dataKey}/history/{date})
+    setupHistorySync(dataKey);
 
     // Keep listening for changes made elsewhere (other tab/device)
-    attachRealtimeSync(uid);
+    attachRealtimeSync(dataKey);
 
     // Force one dashboard render now, so today's history entry exists in
     // Firebase immediately after login rather than waiting for the first
@@ -1862,7 +1872,7 @@ window.AppSync = {
 
   let historyPushTimer = null;
 
-  function setupHistorySync(uid) {
+  function setupHistorySync(dataKey) {
 
     window.pushDailyHistory = function (snapshot) {
 
@@ -1875,7 +1885,7 @@ window.AppSync = {
         if (!dateKey) return;
 
         set(
-          ref(db, 'users/' + uid + '/history/' + dateKey),
+          ref(db, 'users/' + dataKey + '/history/' + dateKey),
           snapshot
         ).catch((err) => {
           console.error('Firebase history save error:', err);
@@ -1892,7 +1902,7 @@ window.AppSync = {
   /* SAVE USER DATA TO FIREBASE                                       */
   /* ---------------------------------------------------------------- */
 
-  function hookSaveJSON(uid) {
+  function hookSaveJSON(dataKey) {
 
     // Prevent adding multiple hooks
     if (window.__firebaseSyncHooked) {
@@ -1941,7 +1951,7 @@ window.AppSync = {
               ref(
                 db,
                 'users/' +
-                uid +
+                dataKey +
                 '/data/' +
                 key
               ),
@@ -1972,14 +1982,14 @@ window.AppSync = {
   /* patched into the live UI — no page reload needed.                 */
   /* ---------------------------------------------------------------- */
 
-  function attachRealtimeSync(uid) {
+  function attachRealtimeSync(dataKey) {
 
     if (unsubscribeRealtimeSync) {
       unsubscribeRealtimeSync();
       unsubscribeRealtimeSync = null;
     }
 
-    const dataRef = ref(db, 'users/' + uid + '/data');
+    const dataRef = ref(db, 'users/' + dataKey + '/data');
 
     unsubscribeRealtimeSync = onValue(
       dataRef,
@@ -2059,12 +2069,13 @@ window.AppSync = {
             'Se verifică accesul…';
 
 
-          // Check authorization in Firebase
-          const allowed =
-            await isUserAllowed(user);
+          // Check authorization in Firebase (and resolve which shared
+          // data node this user should read/write)
+          const access =
+            await checkUserAccess(user);
 
 
-          if (!allowed) {
+          if (!access.allowed) {
 
             loginStatus.textContent = '';
 
@@ -2083,7 +2094,7 @@ window.AppSync = {
 
           // User is authorized
           await syncFromFirebaseThenShow(
-            user.uid
+            access.dataKey
           );
 
 
