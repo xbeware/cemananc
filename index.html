@@ -413,6 +413,27 @@
   .manual-add .addbtn:hover{opacity:.9;}
   .manual-add .ma-error{color:var(--accent);font-size:12.5px;margin:8px 0 0;min-height:14px;}
 
+  /* ---- AI nutrition estimate assist (manual-add form) ---- */
+  .ai-assist{
+    background:linear-gradient(135deg, var(--sage-tint), var(--gold-tint));
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;
+  }
+  .ai-assist label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:8px;}
+  .ai-assist-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .ai-assist-row input{
+    flex:1 1 220px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;
+    font-size:13.5px;font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);
+  }
+  .ai-assist-row button{
+    font-family:'Fraunces',serif;font-weight:600;font-size:13.5px;color:#fff;background:var(--sage);
+    border:none;border-radius:8px;padding:9px 16px;cursor:pointer;white-space:nowrap;
+  }
+  .ai-assist-row button:hover{opacity:.9;}
+  .ai-assist-row button:disabled{opacity:.6;cursor:default;}
+  .ai-assist-status{font-size:12px;color:var(--ink-soft);margin:8px 0 0;min-height:14px;}
+  .ai-assist-status.error{color:var(--accent);}
+  .ai-assist-status.ok{color:var(--sage);font-weight:600;}
+
   .eaten-log{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:20px;}
   .eaten-log h3{font-family:'Fraunces',serif;font-size:15.5px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;}
   .eaten-log .resetbtn{font-size:12px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;}
@@ -615,6 +636,16 @@
     <div class="manual-add">
       <h3>Adaugă manual în jurnal</h3>
       <p class="hint">Pentru orice ai mâncat care nu e în cămară sau în rețete — introdu valorile nutriționale și se adaugă direct în jurnalul de azi.</p>
+
+      <div class="ai-assist">
+        <label for="ai-food-input">Sau descrie ce ai mâncat, iar AI-ul completează formularul de mai jos:</label>
+        <div class="ai-assist-row">
+          <input type="text" id="ai-food-input" placeholder="ex: 2 ouă ochiuri cu o felie de pâine și unt">
+          <button type="button" id="ai-estimate-btn">✨ Estimează cu AI</button>
+        </div>
+        <p class="ai-assist-status" id="ai-assist-status"></p>
+      </div>
+
       <div class="manual-add-grid">
         <div class="field">
           <label for="ma-name">Denumire</label>
@@ -652,6 +683,8 @@
       Jurnalul de azi se resetează automat când începe o zi nouă și se leagă direct de butoanele „Am mâncat asta” din tabul Plan.
       <br><br>
       <strong>Adăugare manuală:</strong> pentru orice mănânci în afara cămării/rețetelor, introdu valorile în secțiunea „Adaugă manual în jurnal” de mai sus. Caloriile și proteina sunt obligatorii; carbohidrații și grăsimile sunt opționale — dacă le completezi, apar exact ca atare în grafice, altfel sunt estimate ca și restul jurnalului.
+      <br><br>
+      <strong>Estimare cu AI:</strong> scrie ce ai mâncat în cuvinte obișnuite (ex. „o farfurie de paste cu sos de roșii și parmezan”) și apasă „Estimează cu AI” — completează automat formularul de mai sus cu o estimare. E o estimare făcută de model, nu o măsurătoare dintr-o bază de date — verifică mereu numerele înainte să apeși „Adaugă în jurnal”.
     </div>
   </div>
 
@@ -1459,6 +1492,54 @@ document.getElementById('ma-addbtn').addEventListener('click', submitManualEntry
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter'){ e.preventDefault(); submitManualEntry(); } });
 });
 
+/* AI nutrition estimate — fills the manual-add form above, doesn't add
+   to the journal directly, so there's always a human check before it
+   counts toward the day's totals. window.estimateNutritionWithAI is
+   defined by the Firebase module script further down the page. */
+const aiFoodInput = document.getElementById('ai-food-input');
+const aiEstimateBtn = document.getElementById('ai-estimate-btn');
+const aiAssistStatus = document.getElementById('ai-assist-status');
+
+async function runAIEstimate(){
+  const desc = aiFoodInput.value.trim();
+  aiAssistStatus.classList.remove('error', 'ok');
+  if (!desc){
+    aiAssistStatus.textContent = 'Scrie mai întâi ce ai mâncat.';
+    aiAssistStatus.classList.add('error');
+    return;
+  }
+  if (typeof window.estimateNutritionWithAI !== 'function'){
+    aiAssistStatus.textContent = 'Funcția AI nu e încă gata — încearcă din nou peste o clipă.';
+    aiAssistStatus.classList.add('error');
+    return;
+  }
+
+  aiEstimateBtn.disabled = true;
+  aiAssistStatus.classList.remove('error', 'ok');
+  aiAssistStatus.textContent = 'Se estimează…';
+
+  try {
+    const est = await window.estimateNutritionWithAI(desc);
+    maName.value = est.name || desc;
+    maKcal.value = Math.round(est.kcal);
+    maProtein.value = typeof est.protein === 'number' ? Math.round(est.protein * 10) / 10 : '';
+    maCarbs.value = typeof est.carbs === 'number' ? Math.round(est.carbs * 10) / 10 : '';
+    maFat.value = typeof est.fat === 'number' ? Math.round(est.fat * 10) / 10 : '';
+    aiAssistStatus.textContent = '✓ Completat mai jos — verifică valorile și apasă „Adaugă în jurnal".';
+    aiAssistStatus.classList.add('ok');
+    aiFoodInput.value = '';
+  } catch (err){
+    console.error('AI estimate error:', err);
+    aiAssistStatus.textContent = 'Nu am putut estima acum — încearcă din nou sau completează manual mai jos.';
+    aiAssistStatus.classList.add('error');
+  } finally {
+    aiEstimateBtn.disabled = false;
+  }
+}
+
+aiEstimateBtn.addEventListener('click', runAIEstimate);
+aiFoodInput.addEventListener('keydown', (e) => { if (e.key === 'Enter'){ e.preventDefault(); runAIEstimate(); } });
+
 document.getElementById('reset-day').addEventListener('click', () => {
   eatenState = { date: todayKey(), items: [] };
   saveEatenState();
@@ -2110,7 +2191,7 @@ window.AppSync = {
   /* FIREBASE SYNC + AUTH GATE                                        */
   /* ---------------------------------------------------------------- */
 
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 
   import {
     getAuth,
@@ -2118,7 +2199,7 @@ window.AppSync = {
     signInWithPopup,
     onAuthStateChanged,
     signOut
-  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 
   import {
     getDatabase,
@@ -2126,7 +2207,18 @@ window.AppSync = {
     get,
     set,
     onValue
-  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+  } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+
+  import {
+    initializeAppCheck,
+    ReCaptchaV3Provider
+  } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app-check.js";
+
+  import {
+    getAI,
+    getGenerativeModel,
+    GoogleAIBackend
+  } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-ai.js";
 
 
   const firebaseConfig = {
@@ -2168,6 +2260,100 @@ window.AppSync = {
   googleProvider.setCustomParameters({
     prompt: "select_account"
   });
+
+
+  /* ---------------------------------------------------------------- */
+  /* APP CHECK — required by Firebase AI Logic starting Nov 2, 2026,   */
+  /* and good practice regardless (stops randoms from spamming your    */
+  /* Gemini quota even if they find the page).                         */
+  /*                                                                    */
+  /* SETUP NEEDED (one-time, in the Firebase console):                */
+  /* 1. Console → App Check → register this web app → reCAPTCHA v3 →   */
+  /*    it gives you a "site key" — paste it below instead of          */
+  /*    "PASTE_YOUR_RECAPTCHA_V3_SITE_KEY_HERE".                       */
+  /* 2. Console → App Check → APIs tab → find "AI Logic API" (or       */
+  /*    "Generative Language API") → Enforce.                          */
+  /* 3. For local testing (opening the file directly / localhost),     */
+  /*    App Check can't verify a real domain, so it falls back to a    */
+  /*    "debug token": open the browser console once, copy the token   */
+  /*    it prints, then paste it into Console → App Check → the app →  */
+  /*    "Manage debug tokens". Remove/comment the debug line below     */
+  /*    once you're only using this on your real deployed domain.      */
+  /* ---------------------------------------------------------------- */
+
+  // self.FIREBASE_APPCHECK_DEBUG_TOKEN = true; // uncomment for local/dev testing only
+
+  let appCheck = null;
+  try {
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider("https://www.google.com/recaptcha/enterprise.js?render=6LeBBK0tAAAAABly8Ys3uIYY-30f2raiRaEbMkjk"),
+      isTokenAutoRefreshEnabled: true
+    });
+  } catch (err) {
+    console.error("App Check init error (AI features will be unavailable until this is fixed):", err);
+  }
+
+
+  /* ---------------------------------------------------------------- */
+  /* AI NUTRITION ESTIMATOR — Gemini via Firebase AI Logic             */
+  /*                                                                    */
+  /* Free tier: uses the Gemini Developer API backend, which is free   */
+  /* with generous daily limits as long as this Firebase project stays */
+  /* on the no-cost "Spark" plan (no billing account linked). Exposed  */
+  /* to the main script as window.estimateNutritionWithAI(text), used  */
+  /* by the "✨ Estimează cu AI" button in the manual-add form on the   */
+  /* Dashboard tab. Not gated behind login — it doesn't touch any      */
+  /* per-user data, just turns a food description into numbers.        */
+  /* ---------------------------------------------------------------- */
+
+  const aiService = getAI(app, { backend: new GoogleAIBackend() });
+
+  // "gemini-flash-latest" is an alias Google keeps pointed at their current
+  // best free-tier Flash model, so this keeps working as models get
+  // renamed/retired without needing to edit this file again.
+  const nutritionModel = getGenerativeModel(aiService, {
+    model: "gemini-flash-latest",
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.2
+    }
+  });
+
+  function parseAIJson(rawText) {
+    // Defensive: strip ```json fences if the model adds them despite
+    // responseMimeType, and grab the first {...} block just in case.
+    let cleaned = rawText.replace(/```json|```/g, "").trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) cleaned = match[0];
+    return JSON.parse(cleaned);
+  }
+
+  window.estimateNutritionWithAI = async function (description) {
+    const prompt =
+      "Ești un asistent de nutriție. Utilizatorul descrie o mâncare sau o " +
+      "masă întreagă (posibil mai multe ingrediente), pentru toată " +
+      "cantitatea menționată — NU per 100g. Estimează valorile " +
+      "nutriționale totale pentru exact ce a descris, folosind cunoștințe " +
+      "tipice despre alimente. Dacă descrierea e ambiguă (ex. nu spune " +
+      "cantitatea), presupune o porție normală, obișnuită.\n\n" +
+      "Descriere: \"" + description + "\"\n\n" +
+      "Răspunde STRICT cu un obiect JSON, fără text în plus, fără code " +
+      "fences, cu exact aceste chei:\n" +
+      "{\"name\": string (denumire scurtă, în română), " +
+      "\"kcal\": number (întreg), " +
+      "\"protein\": number (grame), " +
+      "\"carbs\": number (grame), " +
+      "\"fat\": number (grame)}";
+
+    const result = await nutritionModel.generateContent(prompt);
+    const rawText = result.response.text();
+    const parsed = parseAIJson(rawText);
+
+    if (typeof parsed.kcal !== "number" || typeof parsed.protein !== "number") {
+      throw new Error("Răspuns AI incomplet sau invalid.");
+    }
+    return parsed;
+  };
 
 
   /* ---------------------------------------------------------------- */
