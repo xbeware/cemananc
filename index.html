@@ -2308,52 +2308,16 @@ window.AppSync = {
 
   const aiService = getAI(app, { backend: new GoogleAIBackend() });
 
-  // ------------------------------------------------------------------
-  // MODEL FALLBACK CHAIN
-  //
-  // The free Gemini Developer API tier tracks rate limits (RPM/TPM/RPD)
-  // separately PER MODEL. So if one model is rate-limited, a different
-  // model usually still has quota left. We try each candidate in order
-  // and fall through to the next on a transient error (429 rate-limit,
-  // 429 quota-exhausted, or 503 unavailable). A real config/prompt error
-  // (400/403, bad request, blocked content) is NOT transient — retrying
-  // other models won't fix it, so we throw immediately instead of
-  // burning through the whole list.
-  //
-  // IMPORTANT: only Flash-family models are free-tier. Pro models were
-  // moved behind billing in 2026, and gemini-2.0-flash / flash-lite were
-  // retired March 31 2026 — don't add those back. Before changing this
-  // list, check the current free-tier models at
-  // https://ai.google.dev/gemini-api/docs/pricing and in AI Studio's own
-  // model picker, since Google renames/retires these every few months.
-  // ------------------------------------------------------------------
-  const NUTRITION_MODEL_CANDIDATES = [
-    "gemini-flash-latest",   // alias Google keeps pointed at their current default free Flash
-    "gemini-2.5-flash-lite", // confirmed active post the 2.0 retirement; roomiest free quota
-    "gemini-2.5-flash"       // slightly more capable fallback if both above are exhausted
-  ];
-
-  // If every candidate fails, don't let the very next click immediately
-  // re-hit the network (it'll almost certainly fail again within the
-  // same rate-limit window and just wastes a request). Short cooldown,
-  // then normal behavior resumes automatically.
-  const NUTRITION_COOLDOWN_MS = 60 * 1000;
-  let nutritionFailUntil = 0;
-
-  function isTransientAIError(err) {
-    const status = err && (err.status || err.code);
-    const msg = String((err && err.message) || "").toLowerCase();
-    return (
-      status === 429 ||
-      status === 503 ||
-      msg.includes("429") ||
-      msg.includes("503") ||
-      msg.includes("resource_exhausted") ||
-      msg.includes("unavailable") ||
-      msg.includes("rate limit") ||
-      msg.includes("quota")
-    );
-  }
+  // "gemini-flash-latest" is an alias Google keeps pointed at their current
+  // best free-tier Flash model, so this keeps working as models get
+  // renamed/retired without needing to edit this file again.
+  const nutritionModel = getGenerativeModel(aiService, {
+    model: "gemini-flash-latest",
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.2
+    }
+  });
 
   function parseAIJson(rawText) {
     // Defensive: strip ```json fences if the model adds them despite
@@ -2362,48 +2326,6 @@ window.AppSync = {
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) cleaned = match[0];
     return JSON.parse(cleaned);
-  }
-
-  async function generateWithFallback(prompt) {
-    if (Date.now() < nutritionFailUntil) {
-      const secsLeft = Math.ceil((nutritionFailUntil - Date.now()) / 1000);
-      throw new Error(
-        "AI indisponibil momentan (limită de utilizare atinsă). " +
-        "Încearcă din nou în aproximativ " + secsLeft + " secunde."
-      );
-    }
-
-    let lastErr = null;
-
-    for (const modelId of NUTRITION_MODEL_CANDIDATES) {
-      try {
-        const model = getGenerativeModel(aiService, {
-          model: modelId,
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.2
-          }
-        });
-
-        const result = await model.generateContent(prompt);
-        return result.response.text(); // success — cooldown (if any) implicitly not renewed
-
-      } catch (err) {
-        console.warn("Model failed (" + modelId + "):", err && err.message);
-        lastErr = err;
-
-        if (!isTransientAIError(err)) {
-          // Not a capacity problem (bad request / blocked content /
-          // auth issue) — trying other models won't help, so stop here.
-          throw err;
-        }
-        // else: transient — fall through and try the next candidate
-      }
-    }
-
-    // Every candidate failed with a transient error.
-    nutritionFailUntil = Date.now() + NUTRITION_COOLDOWN_MS;
-    throw lastErr || new Error("Toate modelele AI au eșuat.");
   }
 
   window.estimateNutritionWithAI = async function (description) {
@@ -2423,7 +2345,8 @@ window.AppSync = {
       "\"carbs\": number (grame), " +
       "\"fat\": number (grame)}";
 
-    const rawText = await generateWithFallback(prompt);
+    const result = await nutritionModel.generateContent(prompt);
+    const rawText = result.response.text();
     const parsed = parseAIJson(rawText);
 
     if (typeof parsed.kcal !== "number" || typeof parsed.protein !== "number") {
