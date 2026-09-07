@@ -2211,7 +2211,7 @@ window.AppSync = {
 
   import {
     initializeAppCheck,
-    ReCaptchaV3Provider
+    ReCaptchaEnterpriseProvider
   } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app-check.js";
 
   import {
@@ -2267,18 +2267,18 @@ window.AppSync = {
   /* and good practice regardless (stops randoms from spamming your    */
   /* Gemini quota even if they find the page).                         */
   /*                                                                    */
-  /* SETUP NEEDED (one-time, in the Firebase console):                */
-  /* 1. Console → App Check → register this web app → reCAPTCHA v3 →   */
-  /*    it gives you a "site key" — paste it below instead of          */
-  /*    "PASTE_YOUR_RECAPTCHA_V3_SITE_KEY_HERE".                       */
-  /* 2. Console → App Check → APIs tab → find "AI Logic API" (or       */
-  /*    "Generative Language API") → Enforce.                          */
-  /* 3. For local testing (opening the file directly / localhost),     */
-  /*    App Check can't verify a real domain, so it falls back to a    */
-  /*    "debug token": open the browser console once, copy the token   */
-  /*    it prints, then paste it into Console → App Check → the app →  */
-  /*    "Manage debug tokens". Remove/comment the debug line below     */
-  /*    once you're only using this on your real deployed domain.      */
+  /* Using reCAPTCHA Enterprise (Firebase now pushes new App Check      */
+  /* registrations toward this instead of classic reCAPTCHA v3).       */
+  /* Site key created in Google Cloud Console → reCAPTCHA Enterprise,   */
+  /* registered for domain xbeware.github.io, and registered again in  */
+  /* Firebase Console → App Check → this app → reCAPTCHA Enterprise.   */
+  /*                                                                    */
+  /* For local testing (opening the file directly / localhost),        */
+  /* App Check can't verify a real domain, so it falls back to a       */
+  /* "debug token": open the browser console once, copy the token      */
+  /* it prints, then paste it into Console → App Check → the app →     */
+  /* "Manage debug tokens". Remove/comment the debug line below        */
+  /* once you're only using this on your real deployed domain.         */
   /* ---------------------------------------------------------------- */
 
   // self.FIREBASE_APPCHECK_DEBUG_TOKEN = true; // uncomment for local/dev testing only
@@ -2286,7 +2286,7 @@ window.AppSync = {
   let appCheck = null;
   try {
     appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider("6LeBBK0tAAAAABly8Ys3uIYY-30f2raiRaEbMkjk"),
+      provider: new ReCaptchaEnterpriseProvider("6LcVra4tAAAAAKW0Vx2FYQkgEOlbbQmz7wJkv0ao"),
       isTokenAutoRefreshEnabled: true
     });
   } catch (err) {
